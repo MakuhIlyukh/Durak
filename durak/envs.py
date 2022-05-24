@@ -138,6 +138,10 @@ class Turn_2a_v1:
         self.change(TURN_TYPE.START, swap)
 
     def change(self, new_turn, swap: bool=False):
+        """ Переходит в новое состояние.
+        
+        :param swap: нужно ли менять атакующего
+        """
         if swap:
             self.swap()
         self._turn = new_turn
