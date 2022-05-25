@@ -30,6 +30,10 @@ class TURN_TYPE(Enum):
     """ Дает карты в догонку """
     DEFENSE_END = auto()
     """ Не может побиться, берет карты """
+    WIN = auto()
+    " Выиграл игру "
+    LOSE = auto()
+    " Проиграл игру "
 
 
 class ACTION_TYPE(Enum):
@@ -179,18 +183,22 @@ class Turn_2a_v2:
         self.reset()
 
     def _tuples_transitions_to_dicts(self):
-        """ Приводит tuple к диктам """
+        """ Приводит tuples к dicts """
         res = list()
         for elem in self._transitions:
-            d = {
-                'trigger': elem[0],
-                'source': elem[1],
-                'dest': elem[2],
-            }
-            if elem[3]:  # Если нужно вызывать метод swap
-                d['before'] = 'swap'
+            d = self._tuple_to_dict(elem)
             res.append(d)
         return res
+
+    def _tuple_to_dict(self, tup):
+        d = {
+            'trigger': tup[0],
+            'source': tup[1],
+            'dest': tup[2],
+        }
+        if tup[3]:  # Если нужно вызывать метод swap
+            d['before'] = 'swap'
+        return d
 
     def reset(self):
         self._player = 0
@@ -204,10 +212,59 @@ class Turn_2a_v2:
     def turn(self, action_type: ACTION_TYPE):
         """ Выполнение хода, переход в новое состояние """
         self.trigger(action_type.name)
-    
+
 
 class Turn_2a_v3:
-    pass
+    _transitions = [
+        (ACTION_TYPE.PUT.name, TURN_TYPE.START,TURN_TYPE.DEFENSE, True),
+        (ACTION_TYPE.PUT.name, TURN_TYPE.ATTACK, TURN_TYPE.DEFENSE, True),
+        (ACTION_TYPE.PUT.name, TURN_TYPE.DEFENSE, TURN_TYPE.ATTACK, True),
+        (ACTION_TYPE.PUT.name, TURN_TYPE.ATTACK_END, TURN_TYPE.ATTACK_END, False),
+        (ACTION_TYPE.TAKE.name, TURN_TYPE.DEFENSE, TURN_TYPE.ATTACK_END, True),
+        (ACTION_TYPE.FINISH.name, TURN_TYPE.ATTACK, TURN_TYPE.START, True),
+        (ACTION_TYPE.FINISH.name, TURN_TYPE.ATTACK_END, TURN_TYPE.START, False)
+    ]
+    """ action, state, new_state, swap_or_not """
+
+    def __init__(self):
+        self._machine = Machine(
+            model=self,
+            states=TURN_TYPE,
+            initial=TURN_TYPE.START,
+            transitions=self._tuples_transitions_to_dicts()
+        )
+        self.reset()
+
+    def _tuples_transitions_to_dicts(self):
+        """ Приводит tuples к dicts """
+        res = list()
+        for elem in self._transitions:
+            d = self._tuple_to_dict(elem)
+            res.append(d)
+        return res
+
+    def _tuple_to_dict(self, tup):
+        d = {
+            'trigger': tup[0],
+            'source': tup[1],
+            'dest': tup[2],
+        }
+        if tup[3]:  # Если нужно вызывать метод swap
+            d['before'] = 'swap'
+        return d
+
+    def reset(self):
+        self._player = 0
+        self.state = TURN_TYPE.START
+
+    def swap(self):
+        """ Смена хода
+        Меняет поля, отслеживающие, кто ходит. """
+        self._player = int(not self._player)
+    
+    def turn(self, action_type: ACTION_TYPE):
+        """ Выполнение хода, переход в новое состояние """
+        self.trigger(action_type.name)
 
 
 class Durak_2a_v0:
