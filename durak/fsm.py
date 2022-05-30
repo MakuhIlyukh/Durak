@@ -141,3 +141,67 @@ batman.kittens_rescued
 
 
 # %%
+class A:
+    def __init__(self):
+        self._machine = Machine(
+            self,
+            states=[{"name": "sleep",
+                     "on_enter": "foo"}],
+            initial="sleep")
+    
+    def foo(self):
+        print("foo!!!")
+
+# %%
+a = A()
+a.state
+
+# %%
+a._machine.set_state("sleep")
+
+# %%
+a.to_sleep()
+
+
+# %%
+class A:
+    def __init__(self):
+        self._machine = Machine(self, ["A", "B"], initial="A")
+        self._machine.add_transition('heat', 'A', 'B', conditions='cond')
+    
+    def cond(self):
+        return False
+
+# %%
+a = A()
+
+# %%
+a.heat()
+
+# %%
+a.state
+
+# %%
+a.transitions
+
+
+# %%
+class A:
+    def __init__(self):
+        self._machine = Machine(self, ["A", "B"], initial="A")
+        self._machine.add_transition('heat', 'A', 'B', conditions=['cond', 'cond2'])
+
+    def cond(self, t):
+        return t > 0
+    
+    def cond2(self):
+        return True
+
+
+a = A()
+a.heat(5)
+# %%
+
+
+
+# %%
