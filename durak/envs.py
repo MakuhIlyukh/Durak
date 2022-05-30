@@ -88,7 +88,7 @@ class UnknownTransitionError(Exception):
 
 
 # %% classes
-@dataclass
+@dataclass(frozen=True)
 class Card:
     rank: RANK
     suit: SUIT
@@ -179,7 +179,7 @@ class Durak_2a_v0(Env):
             "conditions": ["_put_defense_cond"] 
         },
         {
-            "take": ACTION_TYPE.TAKE.name,
+            "trigger": ACTION_TYPE.TAKE.name,
             "source": TURN_TYPE.DEFENSE,
             "dest": TURN_TYPE.SUCC_ATTACK,
             "before": ["_swap_callback"],
@@ -223,7 +223,7 @@ class Durak_2a_v0(Env):
             model=self,
             states=TURN_TYPE,
             initial=TURN_TYPE.START_ATTACK,
-            transitions=self._tuples_transitions_to_dicts()
+            transitions=self._transitions
         )
         self.reset()
     
@@ -280,9 +280,9 @@ class Durak_2a_v0(Env):
         raise NotImplementedError("Допиши")
         pass
 
-    # ======================
+    # ===========================================
     # transition conditions
-    # ======================
+    # ===========================================
     def _put_start_attack_to_defense_cond(self, card: Card):
         """ В начале атаки можно положить карту, если: """
         return (
@@ -348,9 +348,9 @@ class Durak_2a_v0(Env):
             less(att_card, card, self._trump_card.suit)
         )
 
-    # =====================
+    # ===========================================
     # transition callbacks
-    # =====================
+    # ===========================================
     def _put_callback(self, card: Card):
         self._table[self._player].append(card)
         # HACK: удаляет только первое вхождение
@@ -360,6 +360,7 @@ class Durak_2a_v0(Env):
         # Пополняем бито
         self._beat.extend(self._table[self._player])
         self._beat.extend(self._table[self._other_player])
+        self._first_beat = False
         # Очищаем стол
         self._clear_table()
         # Берем карты из колоды
@@ -379,9 +380,9 @@ class Durak_2a_v0(Env):
         Меняет поля, отслеживающие, кто ходит. """
         self._player, self._other_player = self._other_player, self._player
     
-    # ========
+    # ===========================================
     # support
-    # ========                
+    # ===========================================
     def _same_rank_on_table(self, card: Card):
         """ Проверяет, есть ли карты с таким рангом на столе """
         return (card.rank in [elem.rank for elem in self._table[0]]
