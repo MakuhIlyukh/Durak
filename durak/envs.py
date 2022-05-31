@@ -1,4 +1,7 @@
 """ Мультиагентные среды для игры в дурака """
+# TODO: избавься от типизации везде или добавь ее
+# TODO: pep8 codestyle check
+# TODO: измени Card на Optional[Card] = None
 
 
 # %% imports 
@@ -27,10 +30,12 @@ class RANK(Enum):
 
 class SUIT(Enum):
     """ Масти карт """
-    SPADES = auto()
-    HEARTS = auto()
-    CLUBS = auto()
-    DIAMONDS = auto()
+    # ???: Возможно лучше на инты заменить
+    #      и просто перегрузить __str__  и/или  __repr__
+    SPADES = '♠'
+    HEARTS = '♡'
+    CLUBS = '♣'
+    DIAMONDS = '♢'
 
 
 class TURN_TYPE(Enum):
@@ -57,10 +62,8 @@ class ACTION_TYPE(Enum):
     """ Типы действий """
     PUT = auto()
     """ Положить карту или побиться картой """
-    TAKE = auto()
-    """ Взять карты после неудачной попытки отбиться """
     FINISH = auto()
-    """ Закончить давать карты """
+    """ Закончить давать карты / Закончить пытаться отбиваться """
 
 
 MIN_PLAYER_CARDS = 6
@@ -93,6 +96,10 @@ class Card:
     rank: RANK
     suit: SUIT
 
+    def __repr__(self) -> str:
+        return f"{self.rank.value}{self.suit.value}"
+
+
 FULL_DECK = [
     Card(rank, suit)
     for suit in SUIT
@@ -100,6 +107,9 @@ FULL_DECK = [
 ]
 
 
+#################################################
+# Сравнения карт по правилам Дурака
+#################################################
 def less(card1: Card, card2: Card, trump: SUIT):
     if card1.suit is card2.suit:
         return card1.rank.value < card2.rank.value
@@ -133,6 +143,7 @@ def compare(card1: Card, card2: Card, trump: SUIT):
             return BIGGER
         else:
             return NOT_COMPARABLE
+#################################################
 
 
 # ???: Когда вызывать пополнение карт у игроков?
@@ -179,7 +190,7 @@ class Durak_2a_v0(Env):
             "conditions": ["_put_defense_cond"] 
         },
         {
-            "trigger": ACTION_TYPE.TAKE.name,
+            "trigger": ACTION_TYPE.FINISH.name,
             "source": TURN_TYPE.DEFENSE,
             "dest": TURN_TYPE.SUCC_ATTACK,
             "before": ["_swap_callback"],
@@ -218,14 +229,14 @@ class Durak_2a_v0(Env):
     _num_of_players = 2
     """ Число игроков """
 
-    def __init__(self):
+    def __init__(self, seed: Optional[int]=None):
         self._machine = Machine(
             model=self,
             states=TURN_TYPE,
             initial=TURN_TYPE.START_ATTACK,
             transitions=self._transitions
         )
-        self.reset()
+        self.reset(seed)
     
     def reset(self, seed: Optional[int]=None):
         super().reset(seed=seed)
@@ -258,27 +269,6 @@ class Durak_2a_v0(Env):
         """ Выполнение хода, переход в новое состояние """
         raise NotImplementedError("Допиши")
         self.trigger(action_type.name)
-    
-    def _new_deck(self) -> List[Card]:
-        """ Создает случайную колоду """
-        res = FULL_DECK.copy()
-        self.np_random.shuffle(res)
-        return res
-
-    def _pop_cards_from_deck(self):
-        """ Пополняет карты игроков из колоды.
-        
-        Порядок получения карт, зависит от `self._player`,
-        поэтому метод должен вызываться только в начале игры
-        и в конце атаки до смены атакующего. """
-        for i in (self._player, self._other_player):
-            while (self._deck
-                   and len(self._cards[i]) < MIN_PLAYER_CARDS):
-                self._cards[i].append(self._deck.pop())
-    
-    def _put_start_attack_defense(self):
-        raise NotImplementedError("Допиши")
-        pass
 
     # ===========================================
     # transition conditions
@@ -288,31 +278,31 @@ class Durak_2a_v0(Env):
         return (
             card in self._cards[self._player]
             and
-            self._cards[self._other_player]  # TODO: maybe redudant
+            bool(self._cards[self._other_player])  # TODO: maybe redudant
         )
     
     def _put_start_attack_to_draw_cond(self, card: Card):
         """ Ничья если: """
         return (
-            not self._cards[self._player]
+            not bool(self._cards[self._player])
             and
-            not self._cards[self._other_player]
+            not bool(self._cards[self._other_player])
         )
     
     def _put_start_attack_to_win_cond(self, card: Card):
         """ Победа текущего игрока, если """
         return (
-            not self._cards[self._player]
+            not bool(self._cards[self._player])
             and
-            self._cards[self._other_player]  # TODO: maybe redudant
+            bool(self._cards[self._other_player])  # TODO: maybe redudant
         )
     
     def _put_start_attack_to_loss_cond(self, card: Card):
         """ Проигрыш текущего игрока, если """
         return (
-            self._cards[self._player]  # TODO: maybe redudant
+            bool(self._cards[self._player])  # TODO: maybe redudant
             and
-            not self._cards[self._other_player]
+            not bool(self._cards[self._other_player])
         )
 
     def _put_attack_and_succ_attack_cond(self, card: Card):
@@ -375,7 +365,7 @@ class Durak_2a_v0(Env):
         # Берем карты из колоды
         self._pop_cards_from_deck()
     
-    def _swap_callback(self):
+    def _swap_callback(self, card: Card):
         """ Смена хода.
         Меняет поля, отслеживающие, кто ходит. """
         self._player, self._other_player = self._other_player, self._player
@@ -390,7 +380,8 @@ class Durak_2a_v0(Env):
     
     def _acceptable_quantity(self, def_player: int):
         """ Допустимое количество карт """
-        return min(self._cards[def_player] + self._table[def_player],
+        return min(len(self._cards[def_player])
+                   + len(self._table[def_player]),
                    5 if self._first_beat else 6)
 
     def _attacking_player(self):
@@ -414,7 +405,24 @@ class Durak_2a_v0(Env):
     
     def _clear_table(self):
         # TODO: возможно лучше очищать, а не присваивать пустые
-        self.table = [[], []]
+        self._table = [[], []]
+    
+    def _new_deck(self) -> List[Card]:
+        """ Создает случайную колоду """
+        res = FULL_DECK.copy()
+        self.np_random.shuffle(res)
+        return res
+
+    def _pop_cards_from_deck(self):
+        """ Пополняет карты игроков из колоды.
+        
+        Порядок получения карт, зависит от `self._player`,
+        поэтому метод должен вызываться только в начале игры
+        и в конце атаки до смены атакующего. """
+        for i in (self._player, self._other_player):
+            while (self._deck
+                   and len(self._cards[i]) < MIN_PLAYER_CARDS):
+                self._cards[i].append(self._deck.pop())
 
 
 # %%
