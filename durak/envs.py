@@ -15,6 +15,26 @@ from transitions import Machine
 
 
 # %% constants
+MIN_PLAYER_CARDS = 6
+""" Минимальное число карт у игрока на руке """
+MAX_PAIRS_NUMBER_BEFORE_FIRST_BEAT = 5
+""" Первый отбой 5 (пар) карт """
+ZERO_CARDS = 0
+""" У игрока осталось 0 карт на руке"""
+FULL_DECK_SIZE = 36
+""" Размер полной колоды"""
+FIRST_PLAYER_INDEX = 0
+""" Номер первого игрока """
+SECOND_PLAYER_INDEX = 1
+""" Номер второго игрока """
+
+# Константы для обозначения результатов сравнения двух карт
+NOT_COMPARABLE = -2
+LESS = -1
+EQUAL = 0
+BIGGER = 1
+
+
 class RANK(Enum):
     """ Ранги карт """
     SIX = 6
@@ -64,26 +84,6 @@ class ACTION_TYPE(Enum):
     """ Положить карту или побиться картой """
     FINISH = auto()
     """ Закончить давать карты / Закончить пытаться отбиваться """
-
-
-MIN_PLAYER_CARDS = 6
-""" Минимальное число карт у игрока на руке """
-MAX_PAIRS_NUMBER_BEFORE_FIRST_BEAT = 5
-""" Первый отбой 5 (пар) карт """
-ZERO_CARDS = 0
-""" У игрока осталось 0 карт на руке"""
-FULL_DECK_SIZE = 36
-""" Размер полной колоды"""
-FIRST_PLAYER_INDEX = 0
-""" Номер первого игрока """
-SECOND_PLAYER_INDEX = 1
-""" Номер второго игрока """
-
-# Константы для обозначения результатов сравнения двух карт
-NOT_COMPARABLE = -2
-LESS = -1
-EQUAL = 0
-BIGGER = 1
 
 
 class UnknownTransitionError(Exception):
@@ -266,22 +266,23 @@ class Durak_2a_v0(Env):
         raise NotImplementedError("Допиши")
     
     def _turn(self, action_type: ACTION_TYPE):
-        """ Выполнение хода, переход в новое состояние """
+        """ Выполнение хода, переход в новое состояние. """
         raise NotImplementedError("Допиши")
         self.trigger(action_type.name)
 
     # ===========================================
     # transition conditions
     # ===========================================
-    def _put_start_attack_to_defense_cond(self, card: Card):
+    def _put_start_attack_to_defense_cond(self, card: Optional[Card]):
         """ В начале атаки можно положить карту, если: """
         return (
+            # if card is None then card not in self._cards[...]
             card in self._cards[self._player]
             and
             bool(self._cards[self._other_player])  # TODO: maybe redudant
         )
     
-    def _put_start_attack_to_draw_cond(self, card: Card):
+    def _put_start_attack_to_draw_cond(self, card: Optional[Card]):
         """ Ничья если: """
         return (
             not bool(self._cards[self._player])
@@ -289,23 +290,23 @@ class Durak_2a_v0(Env):
             not bool(self._cards[self._other_player])
         )
     
-    def _put_start_attack_to_win_cond(self, card: Card):
-        """ Победа текущего игрока, если """
+    def _put_start_attack_to_win_cond(self, card: Optional[Card]):
+        """ Победа текущего игрока, если: """
         return (
             not bool(self._cards[self._player])
             and
             bool(self._cards[self._other_player])  # TODO: maybe redudant
         )
     
-    def _put_start_attack_to_loss_cond(self, card: Card):
-        """ Проигрыш текущего игрока, если """
+    def _put_start_attack_to_loss_cond(self, card: Optional[Card]):
+        """ Проигрыш текущего игрока, если: """
         return (
             bool(self._cards[self._player])  # TODO: maybe redudant
             and
             not bool(self._cards[self._other_player])
         )
 
-    def _put_attack_and_succ_attack_cond(self, card: Card):
+    def _put_attack_and_succ_attack_cond(self, card: Optional[Card]):
         """ Атакующий может положить карту, если: 
         
         :param card: карта, которую хочет положить атакующий
@@ -314,6 +315,7 @@ class Durak_2a_v0(Env):
         # attacking player: self._player
         # defending player: self._other_player
         return (
+            # if card is None then card not in self._cards[...]
             card in self._cards[self._player]
             and 
             self._same_rank_on_table(card)
@@ -322,7 +324,7 @@ class Durak_2a_v0(Env):
               < self._acceptable_quantity(self._other_player)
         )
     
-    def _put_defense_cond(self, card: Card):
+    def _put_defense_cond(self, card: Optional[Card]):
         """ Защищающийся может положить карту, если: 
         
         :param card: карта, которую хочет положить защищающийся
@@ -333,6 +335,7 @@ class Durak_2a_v0(Env):
         # Последняя карта, которую положил атакующий игрок на стол
         att_card = self._table[self._other_player][-1]
         return (
+            # if card is None then card not in self._cards[...]
             card in self._cards[self._player]
             and
             less(att_card, card, self._trump_card.suit)
@@ -374,18 +377,18 @@ class Durak_2a_v0(Env):
     # support
     # ===========================================
     def _same_rank_on_table(self, card: Card):
-        """ Проверяет, есть ли карты с таким рангом на столе """
-        return (card.rank in [elem.rank for elem in self._table[0]]
-                or card.rank in [elem.rank for elem in self._table[1]])
+        """ Проверяет, есть ли карты с таким рангом на столе. """
+        return (card.rank in (elem.rank for elem in self._table[0])
+                or card.rank in (elem.rank for elem in self._table[1]))
     
     def _acceptable_quantity(self, def_player: int):
-        """ Допустимое количество карт """
+        """ Допустимое количество карт. """
         return min(len(self._cards[def_player])
                    + len(self._table[def_player]),
                    5 if self._first_beat else 6)
 
     def _attacking_player(self):
-        """ Возвращает атакующего игрока
+        """ Возвращает атакующего игрока.
         Не работает для состояний win, loss, draw. """
         if self.state in (TURN_TYPE.ATTACK,
                           TURN_TYPE.START_ATTACK,
@@ -395,7 +398,7 @@ class Durak_2a_v0(Env):
             return self._other_player
 
     def _defending_player(self):
-        """ Возвращает атакующего игрока
+        """ Возвращает атакующего игрока.
         Не работает для состояний win, loss, draw. """
         if self.state in (TURN_TYPE.DEFENSE,
                           TURN_TYPE.UNSUCC_DEFENSE):
@@ -404,7 +407,6 @@ class Durak_2a_v0(Env):
             return self._other_player
     
     def _clear_table(self):
-        # TODO: возможно лучше очищать, а не присваивать пустые
         self._table = [[], []]
     
     def _new_deck(self) -> List[Card]:
@@ -420,7 +422,7 @@ class Durak_2a_v0(Env):
         поэтому метод должен вызываться только в начале игры
         и в конце атаки до смены атакующего. """
         for i in (self._player, self._other_player):
-            while (self._deck
+            while (bool(self._deck)
                    and len(self._cards[i]) < MIN_PLAYER_CARDS):
                 self._cards[i].append(self._deck.pop())
 
