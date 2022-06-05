@@ -214,11 +214,13 @@ from tqdm import tqdm
 import pytest
 from copy import deepcopy
 
-from durak.envs import (
-    FULL_DECK_SIZE, Durak_2a_v0, ACTION_TYPE, TURN_TYPE, Card, SUIT, RANK,
-    UnknownTransitionError, MIN_PLAYER_CARDS, FULL_DECK, card_ind,
-    one_hot_enum, one_hot_card, one_hot_card_list
-)
+from durak.envs.durak_2a_v0.card import (
+    Card, SUIT, RANK, FULL_DECK_SIZE, FULL_DECK)
+from durak.envs.durak_2a_v0.utils import (
+    one_hot_card, one_hot_enum, card_ind, one_hot_card_list)
+from durak.envs.durak_2a_v0.states import TURN_TYPE
+from durak.envs.durak_2a_v0.action import ACTION_TYPE
+from durak.envs.durak_2a_v0.envs import Durak_2a_v0
 
 
 def test__new_deck():
@@ -236,7 +238,6 @@ def test_full_deck():
             assert Card(rank, suit) in FULL_DECK
 
 
-# @pytest.mark.skip(reason="Test is not implemented")
 def test_reset():
     env = Durak_2a_v0()
     env.reset()
@@ -256,6 +257,7 @@ def test_reset():
 
     assert env._table == [[], []]
     assert env.state is TURN_TYPE.START_ATTACK
+    assert env.rewards == [0, 0]
 
     env.reset()
     assert env._player == 0
@@ -273,7 +275,7 @@ def test_reset():
 
     assert env._table == [[], []]
     assert env.state is TURN_TYPE.START_ATTACK
-
+    assert env.rewards == [0, 0]
 
 # FIXME: не хорошо покрывающий тест
 def test__pop_cards_from_deck():
