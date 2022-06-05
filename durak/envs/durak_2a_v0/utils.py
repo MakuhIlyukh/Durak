@@ -26,13 +26,13 @@ def card_ind(card: Card):
 
 def one_hot_card(card: Optional[Card]):
     """ One hot encoding for card.
-    :param card: если None, вернет массив из нулей 
+    :param card: если None, вернет массив из нулей
     """
     oh = np.zeros(FULL_DECK_SIZE)
     if card is not None:
         oh[card_ind(card)] = 1
     return oh
-    
+
 
 def one_hot_card_list(cards: List[Card]):
     """ One hot encoding for list of cards """

@@ -4,14 +4,19 @@
 # TODO: измени Card на Optional[Card] = None
 
 
-# %% imports 
-from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Optional, Tuple, List
+# %% imports
+from typing import Optional, List
 
 import numpy as np
 from gym.core import Env
 from transitions import Machine
+
+from durak.envs.durak_2a_v0.action import ACTION_TYPE
+from durak.envs.durak_2a_v0.states import TURN_TYPE
+from durak.envs.durak_2a_v0.card import (
+    Card, FULL_DECK, less)
+from durak.envs.durak_2a_v0.utils import (
+    one_hot_enum, one_hot_card, one_hot_card_list)
 
 
 MIN_PLAYER_CARDS = 6
@@ -25,174 +30,11 @@ FIRST_PLAYER_INDEX = 0
 SECOND_PLAYER_INDEX = 1
 """ Номер второго игрока """
 
-# Константы для обозначения результатов сравнения двух карт
-NOT_COMPARABLE = -2
-LESS = -1
-EQUAL = 0
-BIGGER = 1
-
 # НАГРАДЫ
 LOSS_REWARD = -1
 WIN_REWARD = 1
 DRAW_REWARD = 0
 INVALID_REWARD = -5
-
-
-class RANK(Enum):
-    """ Ранги карт """
-    SIX = 0
-    SEVEN = 1
-    EIGHT = 2
-    NINE = 3
-    TEN = 4
-    JACK = 5
-    QUEEN = 6
-    KING = 7
-    ACE = 8 
-
-    def __str__(self):
-        return RANKS_MAPPING[self.value]
-
-
-RANKS_MAPPING = ['6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
-""" Нужен для реализация __str__ в классе RANK """
-
-
-class SUIT(Enum):
-    """ Масти карт """
-    # ???: Возможно лучше на инты заменить
-    #      и просто перегрузить __str__  и/или  __repr__
-    SPADES = 0
-    HEARTS = 1
-    CLUBS = 2
-    DIAMONDS = 3
-
-    def __str__(self):
-        return SUITS_MAPPING[self.value]      
-
-
-SUITS_MAPPING = ['♠', '♡', '♣', '♢']
-""" Нужен для реализация __str__ в классе SUIT """
-
-
-class TURN_TYPE(Enum):
-    """ Типы хода """
-    START_ATTACK = 0
-    """ Начинает атаковать """
-    ATTACK = 1
-    """ Ходит на... """
-    DEFENSE = 2
-    """ Отбивается """
-    SUCC_ATTACK = 3
-    """ Дает карты в догонку """
-    WIN = 4
-    """ Выиграл игру """
-    LOSS = 5
-    """ Проиграл игру """
-    DRAW = 6
-    """ Ничья """
-    INVALID = 7
-    """ Игрок совершил запрещенное действие """
-
-
-class ACTION_TYPE(Enum):
-    """ Типы действий """
-    PUT = 0
-    """ Положить карту или побиться картой """
-    FINISH = 1
-    """ Закончить давать карты / Закончить пытаться отбиваться """
-
-
-class UnknownTransitionError(Exception):
-    pass
-
-
-@dataclass(frozen=True)
-class Card:
-    rank: RANK
-    suit: SUIT
-
-    def __repr__(self) -> str:
-        return f"{self.rank}{self.suit}"
-
-
-FULL_DECK = [
-    Card(rank, suit)
-    for suit in SUIT
-    for rank in RANK
-]
-
-
-# ===============================================
-# Сравнения карт по правилам Дурака
-# ===============================================
-def less(card1: Card, card2: Card, trump: SUIT):
-    if card1.suit is card2.suit:
-        return card1.rank.value < card2.rank.value
-    else:
-        return card2.suit is trump
-
-
-def equal(card1: Card, card2: Card, trump: SUIT):
-    return card1.rank is card2.rank and card1.suit is card2.suit
-
-
-def bigger(card1: Card, card2: Card, trump: SUIT):
-    if card1.suit is card2.suit:
-        return card1.rank.value > card2.rank.value
-    else:
-        return card1.suit is trump
-
-
-def compare(card1: Card, card2: Card, trump: SUIT):
-    if card1.suit is card2.suit:
-        if card1.rank.value < card2.rank.value:
-            return LESS
-        elif card1.rank.value == card2.rank.value:
-            return EQUAL
-        else:
-            return BIGGER
-    else:
-        if card2.suit is trump:
-            return LESS
-        elif card1.suit is trump:
-            return BIGGER
-        else:
-            return NOT_COMPARABLE
-
-
-# ===============================================
-# one-hot-encodings
-# ===============================================
-def one_hot_enum(enum_member: Enum):
-    """ One hot encoding for any enumeration member"""
-    oh = np.zeros(len(enum_member.__class__))
-    oh[enum_member.value] = 1
-    return oh
-
-
-def card_ind(card: Card):
-    """ Возвращает индекс карты для one-hot-encoding'а """
-    return card.suit.value*len(RANK) + card.rank.value
-
-
-def one_hot_card(card: Optional[Card]):
-    """ One hot encoding for card.
-    :param card: если None, вернет массив из нулей 
-    """
-    oh = np.zeros(FULL_DECK_SIZE)
-    if card is not None:
-        oh[card_ind(card)] = 1
-    return oh
-    
-
-def one_hot_card_list(cards: List[Card]):
-    """ One hot encoding for list of cards """
-    oh = np.zeros(FULL_DECK_SIZE)
-    for c in cards:
-        oh[card_ind(c)] = 1
-    return oh
-# ===============================================
 
 
 # ???: Когда вызывать пополнение карт у игроков?
@@ -207,21 +49,21 @@ class Durak_2a_v0(Env):
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.START_ATTACK,
             "dest": TURN_TYPE.DRAW,
-            "before": [], # ???: Need to add anything? 
+            "before": [],  # ???: Need to add anything?
             "conditions": ["_put_start_attack_to_draw_cond"]
         },
         {
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.START_ATTACK,
             "dest": TURN_TYPE.WIN,
-            "before": [], # ???: Need to add anything? 
+            "before": [],  # ???: Need to add anything?
             "conditions": ["_put_start_attack_to_win_cond"]
         },
         {
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.START_ATTACK,
             "dest": TURN_TYPE.LOSS,
-            "before": [], # ???: Need to add anything? 
+            "before": [],  # ???: Need to add anything?
             "conditions": ["_put_start_attack_to_loss_cond"]
         },
         {
@@ -229,14 +71,14 @@ class Durak_2a_v0(Env):
             "source": TURN_TYPE.START_ATTACK,
             "dest": TURN_TYPE.DEFENSE,
             "before": ["_put_callback", "_swap_callback"],
-            "conditions": ["_put_start_attack_to_defense_cond"] 
+            "conditions": ["_put_start_attack_to_defense_cond"]
         },
         {
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.DEFENSE,
             "dest": TURN_TYPE.ATTACK,
             "before": ["_put_callback", "_swap_callback"],
-            "conditions": ["_put_defense_cond"] 
+            "conditions": ["_put_defense_cond"]
         },
         {
             "trigger": ACTION_TYPE.FINISH.name,
@@ -250,35 +92,35 @@ class Durak_2a_v0(Env):
             "source": TURN_TYPE.ATTACK,
             "dest": TURN_TYPE.DEFENSE,
             "before": ["_put_callback", "_swap_callback"],
-            "conditions": ["_put_attack_and_succ_attack_cond"] 
+            "conditions": ["_put_attack_and_succ_attack_cond"]
         },
         {
             "trigger": ACTION_TYPE.FINISH.name,
             "source": TURN_TYPE.ATTACK,
             "dest": TURN_TYPE.START_ATTACK,
             "before": ["_finish_attack_callback", "_swap_callback"],
-            # there is no conditions 
+            # there is no conditions
         },
         {
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.SUCC_ATTACK,
             "dest": TURN_TYPE.SUCC_ATTACK,
             "before": ["_put_callback"],
-            "conditions": ["_put_attack_and_succ_attack_cond"] 
+            "conditions": ["_put_attack_and_succ_attack_cond"]
         },
         {
             "trigger": ACTION_TYPE.FINISH.name,
             "source": TURN_TYPE.SUCC_ATTACK,
             "dest": TURN_TYPE.START_ATTACK,
             "before": ["_finish_succ_attack_callback"],
-            # there is no conditions 
+            # there is no conditions
         },
     ]
-    
+
     _num_of_players = 2
     """ Число игроков """
 
-    def __init__(self, seed: Optional[int]=None):
+    def __init__(self, seed: Optional[int] = None):
         self._machine = Machine(
             model=self,
             states=TURN_TYPE,
@@ -286,8 +128,8 @@ class Durak_2a_v0(Env):
             transitions=self._transitions
         )
         self.reset(seed)
-    
-    def reset(self, seed: Optional[int]=None):
+
+    def reset(self, seed: Optional[int] = None):
         super().reset(seed=seed)
         self._player = FIRST_PLAYER_INDEX
         """ Ходящий игрок(поле будет меняться от хода к ходу) """
@@ -331,9 +173,8 @@ class Durak_2a_v0(Env):
             self._table[self._other_player][-1]
             if bool(self._table[self._other_player])
             else None
-        ))  
+        ))
         return np.concatenate(obs)
-
 
     def _step(self,
               action_type: ACTION_TYPE,
@@ -349,13 +190,13 @@ class Durak_2a_v0(Env):
     # ===========================================
     def on_enter_WIN(self):
         self._set_rewards(WIN_REWARD, LOSS_REWARD)
-    
+
     def on_enter_LOSS(self):
         self._set_rewards(LOSS_REWARD, WIN_REWARD)
-    
+
     def on_enter_DRAW(self):
         self._set_rewards(DRAW_REWARD, DRAW_REWARD)
-    
+
     def on_enter_INVALID(self):
         self._set_rewards(INVALID_REWARD, DRAW_REWARD)
 
@@ -370,7 +211,7 @@ class Durak_2a_v0(Env):
             and
             bool(self._cards[self._other_player])  # TODO: maybe redudant
         )
-    
+
     def _put_start_attack_to_draw_cond(self, card: Optional[Card]):
         """ Ничья если: """
         return (
@@ -378,7 +219,7 @@ class Durak_2a_v0(Env):
             and
             not bool(self._cards[self._other_player])
         )
-    
+
     def _put_start_attack_to_win_cond(self, card: Optional[Card]):
         """ Победа текущего игрока, если: """
         return (
@@ -386,7 +227,7 @@ class Durak_2a_v0(Env):
             and
             bool(self._cards[self._other_player])  # TODO: maybe redudant
         )
-    
+
     def _put_start_attack_to_loss_cond(self, card: Optional[Card]):
         """ Проигрыш текущего игрока, если: """
         return (
@@ -396,8 +237,8 @@ class Durak_2a_v0(Env):
         )
 
     def _put_attack_and_succ_attack_cond(self, card: Optional[Card]):
-        """ Атакующий может положить карту, если: 
-        
+        """ Атакующий может положить карту, если:
+
         :param card: карта, которую хочет положить атакующий
         """
         # Предусловия:
@@ -406,16 +247,16 @@ class Durak_2a_v0(Env):
         return (
             # if card is None then card not in self._cards[...]
             card in self._cards[self._player]
-            and 
+            and
             self._same_rank_on_table(card)
             and
             len(self._table[self._player])
-              < self._acceptable_quantity(self._other_player)
+            < self._acceptable_quantity(self._other_player)
         )
-    
+
     def _put_defense_cond(self, card: Optional[Card]):
-        """ Защищающийся может положить карту, если: 
-        
+        """ Защищающийся может положить карту, если:
+
         :param card: карта, которую хочет положить защищающийся
         """
         # Предусловия:
@@ -437,7 +278,7 @@ class Durak_2a_v0(Env):
         self._table[self._player].append(card)
         # HACK: удаляет только первое вхождение
         self._cards[self._player].remove(card)
-    
+
     def _finish_attack_callback(self, card: Card):
         # Пополняем бито
         self._beat.extend(self._table[self._player])
@@ -456,12 +297,12 @@ class Durak_2a_v0(Env):
         self._clear_table()
         # Берем карты из колоды
         self._pop_cards_from_deck()
-    
+
     def _swap_callback(self, card: Optional[Card]):
         """ Смена хода.
         Меняет поля, отслеживающие, кто ходит. """
         self._player, self._other_player = self._other_player, self._player
-    
+
     # ===========================================
     # support
     # ===========================================
@@ -469,7 +310,7 @@ class Durak_2a_v0(Env):
         """ Проверяет, есть ли карты с таким рангом на столе. """
         return (card.rank in (elem.rank for elem in self._table[0])
                 or card.rank in (elem.rank for elem in self._table[1]))
-    
+
     def _acceptable_quantity(self, def_player: int):
         """ Допустимое количество карт. """
         return min(len(self._cards[def_player])
@@ -493,10 +334,10 @@ class Durak_2a_v0(Env):
             return self._player
         else:
             return self._other_player
-    
+
     def _clear_table(self):
         self._table = [[], []]
-    
+
     def _new_deck(self) -> List[Card]:
         """ Создает случайную колоду """
         res = FULL_DECK.copy()
@@ -505,7 +346,7 @@ class Durak_2a_v0(Env):
 
     def _pop_cards_from_deck(self):
         """ Пополняет карты игроков из колоды.
-        
+
         Порядок получения карт, зависит от `self._player`,
         поэтому метод должен вызываться только в начале игры
         и в конце атаки до смены атакующего. """
@@ -513,11 +354,12 @@ class Durak_2a_v0(Env):
             while (bool(self._deck)
                    and len(self._cards[i]) < MIN_PLAYER_CARDS):
                 self._cards[i].append(self._deck.pop())
-    
+
     def _set_rewards(self, player_reward, other_player_reward):
         """ Назначает награды """
         self.rewards[self._player] = player_reward
         self.rewards[self._other_player] = other_player_reward
+
 
 # %%
 if __name__ == '__main__':

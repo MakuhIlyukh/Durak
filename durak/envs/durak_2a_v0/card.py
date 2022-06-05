@@ -22,7 +22,7 @@ class RANK(Enum):
     JACK = 5
     QUEEN = 6
     KING = 7
-    ACE = 8 
+    ACE = 8
 
     def __str__(self):
         return RANKS_MAPPING[self.value]
@@ -42,7 +42,7 @@ class SUIT(Enum):
     DIAMONDS = 3
 
     def __str__(self):
-        return SUITS_MAPPING[self.value]      
+        return SUITS_MAPPING[self.value]
 
 
 SUITS_MAPPING = ['♠', '♡', '♣', '♢']
