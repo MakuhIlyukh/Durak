@@ -215,8 +215,9 @@ import pytest
 from copy import deepcopy
 
 from durak.envs import (
-    Durak_2a_v0, ACTION_TYPE, TURN_TYPE, Card, SUIT, RANK,
-    UnknownTransitionError, MIN_PLAYER_CARDS, FULL_DECK
+    FULL_DECK_SIZE, Durak_2a_v0, ACTION_TYPE, TURN_TYPE, Card, SUIT, RANK,
+    UnknownTransitionError, MIN_PLAYER_CARDS, FULL_DECK, card_ind,
+    one_hot_enum, one_hot_card, one_hot_card_list
 )
 
 
@@ -291,7 +292,7 @@ def test__pop_cards_from_deck():
 
 
     env.reset()
-    env._swap_callback()
+    env._swap_callback(None)
     env._cards[1] = env._cards[1][0:3]
     env._cards[0] = env._cards[0][0:4]
     old_cards = deepcopy(env._cards)
@@ -301,6 +302,59 @@ def test__pop_cards_from_deck():
     assert env._cards[1] == old_cards[1] + old_deck[-3:][::-1]
     assert env._cards[0] == old_cards[0] + old_deck[-5:-3][::-1]
     assert env._deck == old_deck[:-5]
+
+
+def test_card_ind():
+    assert card_ind(Card(RANK.SIX, SUIT.HEARTS)) == 9
+    assert card_ind(Card(RANK.SEVEN, SUIT.HEARTS)) == 10
+    assert card_ind(Card(RANK.EIGHT, SUIT.HEARTS)) == 11
+    assert card_ind(Card(RANK.NINE, SUIT.HEARTS)) == 12
+    assert card_ind(Card(RANK.TEN, SUIT.HEARTS)) == 13
+    assert card_ind(Card(RANK.JACK, SUIT.HEARTS)) == 14 
+    assert card_ind(Card(RANK.QUEEN, SUIT.HEARTS)) == 15
+    assert card_ind(Card(RANK.KING, SUIT.HEARTS)) == 16
+    assert card_ind(Card(RANK.ACE, SUIT.HEARTS)) == 17
+
+
+def test_one_hot_enum():
+    assert (one_hot_enum(ACTION_TYPE.PUT) == [1, 0]).all()
+    assert (one_hot_enum(ACTION_TYPE.FINISH) == [0, 1]).all()
+
+    assert (one_hot_enum(ACTION_TYPE.PUT) == [1, 0]).all()
+    assert (one_hot_enum(RANK.SIX) ==   [1, 0, 0, 0, 0, 0, 0, 0, 0]).all()
+    assert (one_hot_enum(RANK.SEVEN) == [0, 1, 0, 0, 0, 0, 0, 0, 0]).all()
+    assert (one_hot_enum(RANK.EIGHT) == [0, 0, 1, 0, 0, 0, 0, 0, 0]).all()
+    assert (one_hot_enum(RANK.NINE) ==  [0, 0, 0, 1, 0, 0, 0, 0, 0]).all()
+    assert (one_hot_enum(RANK.TEN) ==   [0, 0, 0, 0, 1, 0, 0, 0, 0]).all()
+    assert (one_hot_enum(RANK.JACK) ==  [0, 0, 0, 0, 0, 1, 0, 0, 0]).all()
+    assert (one_hot_enum(RANK.QUEEN) == [0, 0, 0, 0, 0, 0, 1, 0, 0]).all()
+    assert (one_hot_enum(RANK.KING) ==  [0, 0, 0, 0, 0, 0, 0, 1, 0]).all()
+    assert (one_hot_enum(RANK.ACE) ==   [0, 0, 0, 0, 0, 0, 0, 0, 1]).all()
+
+
+def test_one_hot_card():
+    assert (one_hot_card(None) == np.zeros(FULL_DECK_SIZE)).all()
+
+    expected = np.zeros(FULL_DECK_SIZE)
+    expected[9 + 2] = 1
+    assert (one_hot_card(Card(RANK.EIGHT, SUIT.HEARTS)) == expected).all()
+
+    k = 0
+    for suit in SUIT:
+        for rank in RANK:
+            expected = np.zeros(FULL_DECK_SIZE)
+            expected[k] = 1
+            assert (one_hot_card(Card(rank, suit)) == expected).all()
+            k += 1
+
+
+def test_one_hot_card_list():
+    for i in range(10):
+        cards = np.random.choice(FULL_DECK, 6)
+        expected = np.zeros(FULL_DECK_SIZE)
+        for c in cards:
+            expected[card_ind(c)] = 1
+        assert (one_hot_card_list(cards) == expected).all()
 
 
 @pytest.mark.skip(reason="Test is not implemented")
