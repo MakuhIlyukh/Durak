@@ -44,27 +44,51 @@ INVALID_REWARD = -5
 # ???: Что насчет ничьей?
 class Durak_2a_v0(Env):
     _transitions = [
+        # end of game (PUT ACTION)
         {
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.START_ATTACK,
             "dest": TURN_TYPE.DRAW,
             "before": [],  # ???: Need to add anything?
-            "conditions": ["_put_start_attack_to_draw_cond"]
+            "conditions": ["_put_or_finish_start_attack_to_draw_cond"]
         },
         {
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.START_ATTACK,
             "dest": TURN_TYPE.WIN,
             "before": [],  # ???: Need to add anything?
-            "conditions": ["_put_start_attack_to_win_cond"]
+            "conditions": ["_put_or_finish_start_attack_to_win_cond"]
         },
         {
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.START_ATTACK,
             "dest": TURN_TYPE.LOSS,
             "before": [],  # ???: Need to add anything?
-            "conditions": ["_put_start_attack_to_loss_cond"]
+            "conditions": ["_put_or_finish_start_attack_to_loss_cond"]
         },
+        # end of game (FINISH ACTION)
+        {
+            "trigger": ACTION_TYPE.FINISH.name,
+            "source": TURN_TYPE.START_ATTACK,
+            "dest": TURN_TYPE.DRAW,
+            "before": [],  # ???: Need to add anything?
+            "conditions": ["_put_or_finish_start_attack_to_draw_cond"]
+        },
+        {
+            "trigger": ACTION_TYPE.FINISH.name,
+            "source": TURN_TYPE.START_ATTACK,
+            "dest": TURN_TYPE.WIN,
+            "before": [],  # ???: Need to add anything?
+            "conditions": ["_put_or_finish_start_attack_to_win_cond"]
+        },
+        {
+            "trigger": ACTION_TYPE.FINISH.name,
+            "source": TURN_TYPE.START_ATTACK,
+            "dest": TURN_TYPE.LOSS,
+            "before": [],  # ???: Need to add anything?
+            "conditions": ["_put_or_finish_start_attack_to_loss_cond"]
+        },
+        # game
         {
             "trigger": ACTION_TYPE.PUT.name,
             "source": TURN_TYPE.START_ATTACK,
@@ -223,7 +247,7 @@ class Durak_2a_v0(Env):
             bool(self._cards[self._other_player])  # TODO: maybe redudant
         )
 
-    def _put_start_attack_to_draw_cond(self, card: Optional[Card]):
+    def _put_or_finish_start_attack_to_draw_cond(self, card: Optional[Card]):
         """ Ничья если: """
         return (
             not bool(self._cards[self._player])
@@ -231,7 +255,7 @@ class Durak_2a_v0(Env):
             not bool(self._cards[self._other_player])
         )
 
-    def _put_start_attack_to_win_cond(self, card: Optional[Card]):
+    def _put_or_finish_start_attack_to_win_cond(self, card: Optional[Card]):
         """ Победа текущего игрока, если: """
         return (
             not bool(self._cards[self._player])
@@ -239,7 +263,7 @@ class Durak_2a_v0(Env):
             bool(self._cards[self._other_player])  # TODO: maybe redudant
         )
 
-    def _put_start_attack_to_loss_cond(self, card: Optional[Card]):
+    def _put_or_finish_start_attack_to_loss_cond(self, card: Optional[Card]):
         """ Проигрыш текущего игрока, если: """
         return (
             bool(self._cards[self._player])  # TODO: maybe redudant
@@ -290,7 +314,7 @@ class Durak_2a_v0(Env):
         # HACK: удаляет только первое вхождение
         self._cards[self._player].remove(card)
 
-    def _finish_attack_callback(self, card: Card):
+    def _finish_attack_callback(self, card: Optional[Card]):
         # Пополняем бито
         self._beat.extend(self._table[self._player])
         self._beat.extend(self._table[self._other_player])
@@ -300,7 +324,7 @@ class Durak_2a_v0(Env):
         # Берем карты из колоды
         self._pop_cards_from_deck()
 
-    def _finish_succ_attack_callback(self, card: Card):
+    def _finish_succ_attack_callback(self, card: Optional[Card]):
         # Пополняем карты неудачно защитившегося игрока
         self._cards[self._other_player].extend(self._table[self._other_player])
         self._cards[self._other_player].extend(self._table[self._player])
