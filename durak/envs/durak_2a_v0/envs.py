@@ -2,6 +2,7 @@
 # TODO: избавься от типизации везде или добавь ее
 # TODO: pep8 codestyle check
 # TODO: измени Card на Optional[Card] = None
+# TODO: от PUT можно избавиться, если передавать None вместо карты
 
 
 # %% imports
@@ -23,8 +24,6 @@ MIN_PLAYER_CARDS = 6
 """ Минимальное число карт у игрока на руке """
 MAX_PAIRS_NUMBER_BEFORE_FIRST_BEAT = 5
 """ Первый отбой 5 (пар) карт """
-FULL_DECK_SIZE = 36
-""" Размер полной колоды"""
 FIRST_PLAYER_INDEX = 0
 """ Номер первого игрока """
 SECOND_PLAYER_INDEX = 1
@@ -153,9 +152,12 @@ class Durak_2a_v0(Env):
         """ Козырная карта """
         self.rewards = [0, 0]
         """ Награды, полученные в конце игры """
+        self.done = False
+        """ Флаг окончания игры """
 
     def _get_observation(self):
         """ Получить наблюдения для ходящего игрока """
+        # TODO: Стоит определиться с dtype
         obs = []
         # setting state
         obs.append(one_hot_enum(self.state))
@@ -163,6 +165,8 @@ class Durak_2a_v0(Env):
         obs.append(one_hot_card(self._trump_card))
         # setting player's hand
         obs.append(one_hot_card_list(self._cards[self._player]))
+        # setting other player's hand SIZE
+        obs.append(np.array([len(self._cards[self._other_player])]))
         # setting player's table
         obs.append(one_hot_card_list(self._table[self._player]))
         # setting other player's table
@@ -174,6 +178,9 @@ class Durak_2a_v0(Env):
             if bool(self._table[self._other_player])
             else None
         ))
+        # setting first beat
+        obs.append(np.array([int(self._first_beat)]))  # TODO: dtype?
+
         return np.concatenate(obs)
 
     def _step(self,
@@ -190,15 +197,19 @@ class Durak_2a_v0(Env):
     # ===========================================
     def on_enter_WIN(self):
         self._set_rewards(WIN_REWARD, LOSS_REWARD)
+        self.done = True
 
     def on_enter_LOSS(self):
         self._set_rewards(LOSS_REWARD, WIN_REWARD)
+        self.done = True
 
     def on_enter_DRAW(self):
         self._set_rewards(DRAW_REWARD, DRAW_REWARD)
+        self.done = True
 
     def on_enter_INVALID(self):
         self._set_rewards(INVALID_REWARD, DRAW_REWARD)
+        self.done = True
 
     # ===========================================
     # transition conditions
@@ -319,7 +330,7 @@ class Durak_2a_v0(Env):
 
     def _attacking_player(self):
         """ Возвращает атакующего игрока.
-        Не работает для состояний win, loss, draw. """
+        Не работает для состояний win, loss, draw, invalid. """
         if self.state in (TURN_TYPE.ATTACK,
                           TURN_TYPE.START_ATTACK,
                           TURN_TYPE.SUCC_ATTACK):
@@ -329,7 +340,7 @@ class Durak_2a_v0(Env):
 
     def _defending_player(self):
         """ Возвращает атакующего игрока.
-        Не работает для состояний win, loss, draw. """
+        Не работает для состояний win, loss, draw, invalid. """
         if self.state in (TURN_TYPE.DEFENSE,):
             return self._player
         else:
