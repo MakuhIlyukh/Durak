@@ -217,10 +217,17 @@ from copy import deepcopy
 from durak.envs.durak_2a_v0.card import (
     Card, SUIT, RANK, FULL_DECK_SIZE, FULL_DECK)
 from durak.envs.durak_2a_v0.utils import (
-    one_hot_card, one_hot_enum, card_ind, one_hot_card_list)
+    one_hot_card, one_hot_enum, card_ind, one_hot_card_list,
+    one_hot_action_and_card)
 from durak.envs.durak_2a_v0.states import TURN_TYPE
 from durak.envs.durak_2a_v0.action import ACTION_TYPE
 from durak.envs.durak_2a_v0.envs import Durak_2a_v0
+
+
+def test_action_type():
+    assert len(ACTION_TYPE) == 2, "если action_type изменился, нужно переделать one-hot encoding в utils"
+    assert ACTION_TYPE.PUT.value == 0
+    assert ACTION_TYPE.FINISH.value == 1
 
 
 def test__new_deck():
@@ -258,6 +265,7 @@ def test_reset():
     assert env._table == [[], []]
     assert env.state is TURN_TYPE.START_ATTACK
     assert env.rewards == [0, 0]
+    assert env.done == False
 
     env.reset()
     assert env._player == 0
@@ -276,6 +284,8 @@ def test_reset():
     assert env._table == [[], []]
     assert env.state is TURN_TYPE.START_ATTACK
     assert env.rewards == [0, 0]
+    assert env.done == False
+
 
 # FIXME: не хорошо покрывающий тест
 def test__pop_cards_from_deck():
@@ -357,6 +367,26 @@ def test_one_hot_card_list():
         for c in cards:
             expected[card_ind(c)] = 1
         assert (one_hot_card_list(cards) == expected).all()
+
+
+def test_one_hot_action_and_card():
+    assert (one_hot_action_and_card(ACTION_TYPE.PUT, None) == np.zeros(1 + FULL_DECK_SIZE)).all()
+    assert (one_hot_action_and_card(ACTION_TYPE.FINISH, None) == np.concatenate([np.array([1]), np.zeros(FULL_DECK_SIZE)])).all()
+
+    expected = np.zeros(1 + FULL_DECK_SIZE)
+    expected[9 + 2 + 1] = 1
+    expected[0] = 0
+    assert (one_hot_action_and_card(ACTION_TYPE.PUT, Card(RANK.EIGHT, SUIT.HEARTS)) == expected).all()
+
+    for action in ACTION_TYPE:
+        k = 0
+        for suit in SUIT:
+            for rank in RANK:
+                expected = np.zeros(1 + FULL_DECK_SIZE)
+                expected[1 + k] = 1
+                expected[0] = action.value
+                assert (one_hot_action_and_card(action, Card(rank, suit)) == expected).all()
+                k += 1
 
 
 @pytest.mark.skip(reason="Test is not implemented")
