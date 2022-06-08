@@ -394,8 +394,3 @@ class Durak_2a_v0(Env):
         """ Назначает награды """
         self.rewards[self._player] = player_reward
         self.rewards[self._other_player] = other_player_reward
-
-
-# %%
-if __name__ == '__main__':
-    pass
