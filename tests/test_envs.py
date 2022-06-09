@@ -217,8 +217,9 @@ from copy import deepcopy
 from durak.envs.durak_2a_v0.card import (
     Card, SUIT, RANK, FULL_DECK_SIZE, FULL_DECK)
 from durak.envs.durak_2a_v0.utils import (
-    one_hot_card, one_hot_enum, card_ind, one_hot_card_list,
-    one_hot_action_and_card)
+    action_and_card_from_one_hot, card_from_one_hot, one_hot_card,
+    one_hot_enum, card_ind, one_hot_card_list, one_hot_action_and_card,
+    card_from_ind, card_ind_from_one_hot, card_list_from_one_hot)
 from durak.envs.durak_2a_v0.states import TURN_TYPE
 from durak.envs.durak_2a_v0.action import ACTION_TYPE
 from durak.envs.durak_2a_v0.envs import Durak_2a_v0
@@ -327,6 +328,71 @@ def test_card_ind():
     assert card_ind(Card(RANK.KING, SUIT.HEARTS)) == 16
     assert card_ind(Card(RANK.ACE, SUIT.HEARTS)) == 17
 
+    k = 0
+    for suit in SUIT:
+        for rank in RANK:
+            assert card_ind(Card(rank, suit)) == k
+            k += 1
+
+
+def test_card_from_ind():
+    k = 0
+    for suit in SUIT:
+        for rank in RANK:
+            card = Card(rank, suit)
+            assert card_ind(card) == k
+            assert card_from_ind(card_ind(card)) == card
+            k += 1
+
+
+def test_card_ind_from_one_hot():
+    k = 0
+    for suit in SUIT:
+        for rank in RANK:
+            card = Card(rank, suit)
+            oh = one_hot_card(card)
+            assert card_ind_from_one_hot(oh) == k
+            k += 1
+
+
+def test_card_from_one_hot():
+    k = 0
+    for suit in SUIT:
+        for rank in RANK:
+            card = Card(rank, suit)
+            oh = one_hot_card(card)
+            assert card_from_one_hot(oh) == card
+            k += 1
+    oh = one_hot_card(None)
+    assert card_from_one_hot(oh) is None
+
+
+def test_action_and_card_from_one_hot():
+    for action in ACTION_TYPE:
+        k = 0
+        for suit in SUIT:
+            for rank in RANK:
+                card = Card(rank, suit)
+                oh = one_hot_action_and_card(action, card)
+                expected_oh = np.zeros(1 + FULL_DECK_SIZE)
+                expected_oh[1 + k] = 1
+                expected_oh[0] = action.value
+                assert (oh == expected_oh).all()
+                assert action_and_card_from_one_hot(oh) == (action, card)
+                k += 1
+
+
+def test_card_list_from_one_hot():
+    M = 100
+    for i in range(M):
+        cards = np.random.choice(FULL_DECK, 6)
+        expected = np.zeros(FULL_DECK_SIZE)
+        for c in cards:
+            expected[card_ind(c)] = 1
+        oh = one_hot_card_list(cards)
+        assert (oh == expected).all()
+        assert (set(card_list_from_one_hot(oh)) == set(cards))
+
 
 def test_one_hot_enum():
     assert (one_hot_enum(ACTION_TYPE.PUT) == [1, 0]).all()
@@ -361,7 +427,8 @@ def test_one_hot_card():
 
 
 def test_one_hot_card_list():
-    for i in range(10):
+    M = 100
+    for i in range(M):
         cards = np.random.choice(FULL_DECK, 6)
         expected = np.zeros(FULL_DECK_SIZE)
         for c in cards:

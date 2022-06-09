@@ -6,7 +6,7 @@ from typing import Optional, List
 
 import numpy as np
 
-from durak.envs.durak_2a_v0.card import Card, RANK, FULL_DECK_SIZE
+from durak.envs.durak_2a_v0.card import Card, RANK, FULL_DECK_SIZE, SUIT
 from durak.envs.durak_2a_v0.action import ACTION_TYPE
 
 
@@ -27,6 +27,7 @@ def card_ind(card: Card):
 
 def one_hot_card(card: Optional[Card]):
     """ One hot encoding for card.
+
     :param card: если None, вернет массив из нулей
     """
     # ???: Может лучше, чтобы для None был отдельный бит?
@@ -46,6 +47,7 @@ def one_hot_card_list(cards: List[Card]):
 
 def one_hot_action_and_card(action: ACTION_TYPE, card: Optional[Card]):
     """ One hot encoding for (action, card) pair.
+
     1 бит под действие, остальные биты под карту
     """
     # 1 бит под действие, остальные биты под карту
@@ -54,3 +56,48 @@ def one_hot_action_and_card(action: ACTION_TYPE, card: Optional[Card]):
     if card is not None:
         oh[card_ind(card) + 1] = 1  # + 1 IS IMPORTANT!
     return oh
+
+
+# ===============================================
+# one-hot-decodings
+# ===============================================
+def card_from_ind(ind: int):
+    """ Обратная функция к card_ind """
+    return Card(rank=RANK(ind % len(RANK)),
+                suit=SUIT(ind // len(RANK)))
+
+
+# TODO: скользкий момент с обработкой None-случая
+#       возможно стоит как-то изменить
+def card_ind_from_one_hot(oh: np.array):
+    """ Возвращает индекс карты из one-hot-encoding.
+
+    :param oh: np.array с длиной равной размеру полной колоды.
+        В этот массив входит ТОЛЬКО one-hot-encoding карты!
+
+    НЕ ДЕЛАЕТ ПРОВЕРКУ НА ТО, ЧТО `oh` НЕ РАВЕН НУЛЮ!
+    """
+    return np.argmax(oh)
+
+
+def card_from_one_hot(oh: np.array):
+    """ Обратная функция к one_hot_card"""
+    if (oh == 0).all():
+        return None
+    else:
+        return card_from_ind(card_ind_from_one_hot(oh))
+
+
+def action_and_card_from_one_hot(oh: np.array):
+    """ Обратная функция к one_hot_action_and_card """
+    action = ACTION_TYPE(oh[0])
+    card = card_from_one_hot(oh[1:])
+    return action, card
+
+
+def card_list_from_one_hot(oh: np.array):
+    """ Обратная функция к one_hot_card_list """
+    res = []
+    for ind in oh.nonzero()[0]:
+        res.append(card_from_ind(ind))
+    return res

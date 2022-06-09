@@ -47,3 +47,4 @@
 - [ ] MLFLOW integration
 - [ ] rllib
 - [ ] PettingZoo
+- [ ] Добавить README в подпапки
