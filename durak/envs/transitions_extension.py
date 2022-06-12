@@ -23,9 +23,12 @@ class MayMachine(Machine):
         return False
 
     def _add_may_transition_func_for_trigger(self, trigger, model):
-        self._checked_assignment(model, "may_%s" % trigger, partial(self._can_trigger, model, trigger))
+        self._checked_assignment(model, "may_%s" % trigger,
+                                 partial(self._can_trigger, model, trigger))
 
     def _add_trigger_to_model(self, trigger, model):
-        # ???: Может лучше убрать следующую строку и добавить super()._add_trigger_to_model?
-        self._checked_assignment(model, trigger, partial(self.events[trigger].trigger, model))
+        # ???: Может лучше убрать следующую строку
+        #       и добавить super()._add_trigger_to_model?
+        self._checked_assignment(model, trigger,
+                                 partial(self.events[trigger].trigger, model))
         self._add_may_transition_func_for_trigger(trigger, model)
