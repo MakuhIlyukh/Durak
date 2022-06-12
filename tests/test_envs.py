@@ -490,5 +490,7 @@ def test_mark_card_on_mask():
 
 @pytest.mark.skip(reason="Test is not implemented")
 def test_durak_2a_v0():
+    SEED = 145
     env = Durak_2a_v0()
-    env.reset()
+    env.reset(seed=SEED)
+    

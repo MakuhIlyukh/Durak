@@ -236,25 +236,25 @@ class Durak_2a_v0(Env):
     # ===========================================
     # enter callbacks
     # ===========================================
-    def on_enter_START_ATTACK(self):
+    def on_enter_START_ATTACK(self, card: Optional[Card]):
         # FINISH выполнится, если игра должна завершиться,
         # поэтому мы перескочим в другое состояние(WIN, LOSS, DRAW).
         # Не бойтесь, в INVALID перейти нельзя, если нет такого transition
         self.FINISH(None)
 
-    def on_enter_WIN(self):
+    def on_enter_WIN(self, card: Optional[Card]):
         self._set_rewards(WIN_REWARD, LOSS_REWARD)
         self.done = True
 
-    def on_enter_LOSS(self):
+    def on_enter_LOSS(self, card: Optional[Card]):
         self._set_rewards(LOSS_REWARD, WIN_REWARD)
         self.done = True
 
-    def on_enter_DRAW(self):
+    def on_enter_DRAW(self, card: Optional[Card]):
         self._set_rewards(DRAW_REWARD, DRAW_REWARD)
         self.done = True
 
-    def on_enter_INVALID(self):
+    def on_enter_INVALID(self, card: Optional[Card]):
         self._set_rewards(INVALID_REWARD, DRAW_REWARD)
         self.done = True
 

@@ -7,8 +7,10 @@ import pickle
 import traceback
 
 from transitions import MachineError
+from termcolor import colored
 
-from durak.envs import ACTION_TYPE, Durak_2a_v0
+from durak.envs.durak_2a_v0.action import ACTION_TYPE
+from durak.envs.durak_2a_v0.envs import Durak_2a_v0
 
 
 class InvalidCommandExc(Exception):
@@ -17,12 +19,17 @@ class InvalidCommandExc(Exception):
 
 def print_info(env):
     print(f"\n\n\nХОД")
-    print(f"Ходит игрок: {env._player}")
+
+    cld = lambda s, player: colored(s, "green" if player == 0 else "yellow")
+
+    print(cld(f"Ходит игрок: ", env._player), end="")
+    print(cld(env._player, env._player))
+    
     print(f"Тип хода: {env.state}")
-    print(f"Карты игрока 0: {env._cards[0]}  ({len(env._cards[0])})")
-    print(f"Карты игрока 1: {env._cards[1]}  ({len(env._cards[1])})")
-    print(f"Стол игрока 0: {env._table[0]}")
-    print(f"Стол игрока 1: {env._table[1]}")
+    print(cld(f"Карты игрока 0: {env._cards[0]}  ({len(env._cards[0])})", 0))
+    print(cld(f"Карты игрока 1: {env._cards[1]}  ({len(env._cards[1])})", 1))
+    print(cld(f"Стол игрока 0: {env._table[0]}", 0))
+    print(cld(f"Стол игрока 1: {env._table[1]}", 1))
     print(f"Колода: {env._deck}")
     print(f"БИТО: {env._beat}")
 
@@ -52,15 +59,16 @@ def play():
     history = list()
     try:
         env = Durak_2a_v0()
-        env.reset(seed=12)
+        env.reset(seed=145)
 
         print_info(env)
         com = input()
+        history.append((None, pickle.dumps(env)))
         while com != 'q':
             try:
                 action, card = parse_command(env, com)
                 env.trigger(action.name, card)
-                history.append(pickle.dumps(env))
+                history.append((action, pickle.dumps(env)))
             except InvalidCommandExc as e:
                 print(f"\n\n\nНеправильная команда.{e}")
             # except MachineError:
