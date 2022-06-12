@@ -14,7 +14,7 @@ from durak.envs.durak_2a_v0.action import ACTION_TYPE
 # one-hot-encodings
 # ===============================================
 def one_hot_enum(enum_member: Enum):
-    """ One hot encoding for any enumeration member"""
+    """ One hot encoding for any enumeration member """
     oh = np.zeros(len(enum_member.__class__))
     oh[enum_member.value] = 1
     return oh
@@ -45,17 +45,29 @@ def one_hot_card_list(cards: List[Card]):
     return oh
 
 
-def one_hot_action_and_card(action: ACTION_TYPE, card: Optional[Card]):
-    """ One hot encoding for (action, card) pair.
+# -----------------------------------------------
+# BAD CODE (Много магических констант, зависим от ACTION_TYPE)
+# -----------------------------------------------
+def create_empty_actcar_oh():
+    """ Создает пустой one hot encoding для действия и карты """
+    return np.zeros(1 + FULL_DECK_SIZE)  # ???: MAGIC CONSTANT
 
-    1 бит под действие, остальные биты под карту
-    """
-    # 1 бит под действие, остальные биты под карту
-    oh = np.zeros(1 + FULL_DECK_SIZE)
-    oh[0] = action.value
+
+def mark_FINISH_actcar_onehot(oh: np.array):
+    """ Помечает FINISH на onehot encoding'е для действия и карты """
+    oh[0] = 1  # ???: MAGIC CONSTANT
+
+
+def mark_card_actcar_onehot(oh: np.array,
+                            card: Optional[Card]):
+    """ Помечает карту на onehot encoding'е для действия и карты """
     if card is not None:
+        # Первый бит уделяется под действие, поэтому мы смещаем на 1
+        # ???: MAGIC CONSTANT
         oh[card_ind(card) + 1] = 1  # + 1 IS IMPORTANT!
-    return oh
+# -----------------------------------------------
+# END OF BAD CODE
+# -----------------------------------------------
 
 
 # ===============================================
@@ -81,7 +93,7 @@ def card_ind_from_one_hot(oh: np.array):
 
 
 def card_from_one_hot(oh: np.array):
-    """ Обратная функция к one_hot_card"""
+    """ Обратная функция к one_hot_card """
     if (oh == 0).all():
         return None
     else:
