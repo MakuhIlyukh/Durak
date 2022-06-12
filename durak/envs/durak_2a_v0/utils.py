@@ -45,43 +45,13 @@ def one_hot_card_list(cards: List[Card]):
     return oh
 
 
-# -----------------------------------------------
-# TODO: BAD CODE
-# BAD CODE (Много магических констант, зависим от ACTION_TYPE
-#           А его неправильное использование может приводить к ошибкам.
-#           Пример:
-#               mark_FINISH_actcar_onehot(oh)
-#               _mark_action_actcar_onehot(oh, ACTION_TYPE.PUT)
-#               mark_card_actcar_onehot(oh, card)
-#               В этом случае oh[0] == 0, а не 1, как должно быть.
-# -----------------------------------------------
-def create_empty_actcar_oh():
-    """ Создает пустой one hot encoding для действия и карты """
-    return np.zeros(1 + FULL_DECK_SIZE)  # ???: MAGIC CONSTANT
-
-
-def mark_FINISH_actcar_onehot(oh: np.array):
-    """ Помечает FINISH на onehot encoding'е для действия и карты """
-    oh[0] = 1  # ???: MAGIC CONSTANT
-
-
-def mark_card_actcar_onehot(oh: np.array,
-                            card: Optional[Card]):
-    """ Помечает карту на onehot encoding'е для действия и карты """
+def one_hot_action_and_card(action: ACTION_TYPE, card: Optional[Card]):
+    oh = np.zeros(1 + FULL_DECK_SIZE)
+    oh[0] = action.value
     if card is not None:
         # Первый бит уделяется под действие, поэтому мы смещаем на 1
-        # ???: MAGIC CONSTANT
         oh[card_ind(card) + 1] = 1  # + 1 IS IMPORTANT!
-
-
-def one_hot_action_and_card(action: ACTION_TYPE, card: Optional[Card]):
-    oh = create_empty_actcar_oh()
-    oh[0] = action.value
-    mark_card_actcar_onehot(oh, card)
     return oh
-# -----------------------------------------------
-# END OF BAD CODE
-# -----------------------------------------------
 
 
 # ===============================================
@@ -127,3 +97,25 @@ def card_list_from_one_hot(oh: np.array):
     for ind in oh.nonzero()[0]:
         res.append(card_from_ind(ind))
     return res
+
+
+# -----------------------------------------------
+# Masks
+# -----------------------------------------------
+# TODO: onehot -> mask in docstr
+def create_empty_mask():
+    """ Создает пустую маску для действий и карт """
+    return np.zeros(1 + FULL_DECK_SIZE)  # ???: MAGIC CONSTANT
+
+
+def mark_FINISH_on_mask(mask: np.array):
+    """ Помечает FINISH на маске """
+    mask[0] = 1  # ???: MAGIC CONSTANT
+
+
+def mark_card_on_mask(mask: np.array,
+                      card: Optional[Card]):
+    """ Помечает карту на маске """
+    if card is not None:
+        # Первый бит уделяется под действие, поэтому мы смещаем на 1
+        mask[card_ind(card) + 1] = 1  # + 1 IS IMPORTANT!

@@ -217,9 +217,11 @@ from copy import deepcopy
 from durak.envs.durak_2a_v0.card import (
     Card, SUIT, RANK, FULL_DECK_SIZE, FULL_DECK)
 from durak.envs.durak_2a_v0.utils import (
-    action_and_card_from_one_hot, card_from_one_hot, one_hot_card,
+    action_and_card_from_one_hot, card_from_one_hot, create_empty_mask,
+    mark_card_on_mask, one_hot_card, mark_FINISH_on_mask,
     one_hot_enum, card_ind, one_hot_card_list, one_hot_action_and_card,
-    card_from_ind, card_ind_from_one_hot, card_list_from_one_hot)
+    card_from_ind, card_ind_from_one_hot, card_list_from_one_hot,
+    create_empty_mask)
 from durak.envs.durak_2a_v0.states import TURN_TYPE
 from durak.envs.durak_2a_v0.action import ACTION_TYPE
 from durak.envs.durak_2a_v0.envs import Durak_2a_v0
@@ -454,6 +456,36 @@ def test_one_hot_action_and_card():
                 expected[0] = action.value
                 assert (one_hot_action_and_card(action, Card(rank, suit)) == expected).all()
                 k += 1
+
+
+def test_create_empty_mask():
+    expected = np.zeros(FULL_DECK_SIZE + 1)
+    oh = create_empty_mask()
+    assert (oh == expected).all()
+
+
+def test_mark_FINISH_on_mask():
+    expected = create_empty_mask()
+    expected[0] = 1
+    expected[9] = 1
+    expected[18] = 1
+    mask = create_empty_mask()
+    mark_FINISH_on_mask(mask)
+    mark_card_on_mask(mask, Card(RANK.ACE, SUIT.SPADES))
+    mark_card_on_mask(mask, Card(RANK.ACE, SUIT.HEARTS))
+    assert (mask == expected).all()
+
+
+def test_mark_card_on_mask():
+    expected = create_empty_mask()
+    expected[0] = 1
+    expected[9] = 1
+    expected[18] = 1
+    mask = create_empty_mask()
+    mark_FINISH_on_mask(mask)
+    mark_card_on_mask(mask, Card(RANK.ACE, SUIT.SPADES))
+    mark_card_on_mask(mask, Card(RANK.ACE, SUIT.HEARTS))
+    assert (mask == expected).all()
 
 
 @pytest.mark.skip(reason="Test is not implemented")
