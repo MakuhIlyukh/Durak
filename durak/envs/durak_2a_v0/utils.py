@@ -46,7 +46,14 @@ def one_hot_card_list(cards: List[Card]):
 
 
 # -----------------------------------------------
-# BAD CODE (Много магических констант, зависим от ACTION_TYPE)
+# TODO: BAD CODE
+# BAD CODE (Много магических констант, зависим от ACTION_TYPE
+#           А его неправильное использование может приводить к ошибкам.
+#           Пример:
+#               mark_FINISH_actcar_onehot(oh)
+#               _mark_action_actcar_onehot(oh, ACTION_TYPE.PUT)
+#               mark_card_actcar_onehot(oh, card)
+#               В этом случае oh[0] == 0, а не 1, как должно быть.
 # -----------------------------------------------
 def create_empty_actcar_oh():
     """ Создает пустой one hot encoding для действия и карты """
@@ -65,6 +72,13 @@ def mark_card_actcar_onehot(oh: np.array,
         # Первый бит уделяется под действие, поэтому мы смещаем на 1
         # ???: MAGIC CONSTANT
         oh[card_ind(card) + 1] = 1  # + 1 IS IMPORTANT!
+
+
+def one_hot_action_and_card(action: ACTION_TYPE, card: Optional[Card]):
+    oh = create_empty_actcar_oh()
+    oh[0] = action.value
+    mark_card_actcar_onehot(oh, card)
+    return oh
 # -----------------------------------------------
 # END OF BAD CODE
 # -----------------------------------------------
