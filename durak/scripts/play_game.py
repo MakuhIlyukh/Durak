@@ -20,7 +20,8 @@ class InvalidCommandExc(Exception):
 def print_info(env):
     print(f"\n\n\nХОД")
 
-    cld = lambda s, player: colored(s, "green" if player == 0 else "yellow")
+    def cld(s, player):
+        return colored(s, "green" if player == 0 else "yellow")
 
     print(cld(f"Ходит игрок: ", env._player), end="")
     print(cld(env._player, env._player))
