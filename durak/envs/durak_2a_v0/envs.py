@@ -3,6 +3,8 @@
 # TODO: pep8 codestyle check
 # TODO: измени Card на Optional[Card] = None
 # TODO: от PUT можно избавиться, если передавать None вместо карты
+# TODO: посмотри, как можно оптимизировать fsm из transitions
+#       с помощью её конфигурирования 
 
 
 # %% imports
@@ -12,12 +14,14 @@ import numpy as np
 from gym.core import Env
 from transitions import Machine
 
+from durak.envs.transitions_extension import MayMachine
 from durak.envs.durak_2a_v0.action import ACTION_TYPE
 from durak.envs.durak_2a_v0.states import TURN_TYPE
 from durak.envs.durak_2a_v0.card import (
     Card, FULL_DECK, less)
 from durak.envs.durak_2a_v0.utils import (
-    one_hot_enum, one_hot_card, one_hot_card_list)
+    card_ind, create_empty_mask, mark_FINISH_on_mask,
+    mark_card_on_mask, one_hot_enum, one_hot_card, one_hot_card_list)
 
 
 MIN_PLAYER_CARDS = 6
@@ -36,12 +40,10 @@ DRAW_REWARD = 0
 INVALID_REWARD = -5
 
 
-# ???: Когда вызывать пополнение карт у игроков?
-# ???: Как и когда проверять, что игра закончилась?
-# ???: Как и когда проверять, что ход корректен?
-# ???: В какой форме передавать действия в step
-# ???: Как и когда проверять, что игрок еще может добавить карту?
-# ???: Что насчет ничьей?
+# ???: Удовлетворяет ли среда критериям наследия от Env?
+# ANSWER: step не возвращает награды и наблюдения, поэтому не особо.
+# ???: А влияет ли это на работоспособность среды и системы?
+# TODO: Проверить работоспособность MayMachine
 class Durak_2a_v0(Env):
     _transitions = [
         # end of game (PUT ACTION)
@@ -144,7 +146,7 @@ class Durak_2a_v0(Env):
     """ Число игроков """
 
     def __init__(self, seed: Optional[int] = None):
-        self._machine = Machine(
+        self._machine = MayMachine(
             model=self,
             states=TURN_TYPE,
             initial=TURN_TYPE.START_ATTACK,
@@ -216,9 +218,30 @@ class Durak_2a_v0(Env):
             self.to_INVALID()
         raise NotImplementedError("Допиши :)")
 
+    def _one_hot_valid_actions(self):
+        """ Возвращает маску валидных действий """
+        res = create_empty_mask()
+        # Если выполнить действие FINISH
+        if self.may_FINISH(None):
+            mark_FINISH_on_mask(res)
+        # Если можно выполнить действие PUT
+        # NOTE: проверяется ТОЛЬКО для карт на РУКЕ
+        #       поэтому может быть источником багов,
+        #       если возможны действия с картами НЕ на руке    
+        for card in self._cards[self._player]:
+            if self.may_PUT(card):
+                mark_card_on_mask(res, card)
+        return res
+
     # ===========================================
     # enter callbacks
     # ===========================================
+    def on_enter_START_ATTACK(self):
+        # FINISH выполнится, если игра должна завершиться,
+        # поэтому мы перескочим в другое состояние(WIN, LOSS, DRAW).
+        # Не бойтесь, в INVALID перейти нельзя, если нет такого transition
+        self.FINISH(None)
+
     def on_enter_WIN(self):
         self._set_rewards(WIN_REWARD, LOSS_REWARD)
         self.done = True
@@ -394,3 +417,5 @@ class Durak_2a_v0(Env):
         """ Назначает награды """
         self.rewards[self._player] = player_reward
         self.rewards[self._other_player] = other_player_reward
+
+# %%
