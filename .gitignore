@@ -4,3 +4,4 @@ env/
 .pytest_cache
 data/
 .mypy_cache
+node_modules/
