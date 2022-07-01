@@ -30,16 +30,16 @@ export class Card {
 	};
 
 	getHTML(clickable=false, click_handler) {
-    const cardDiv = document.createElement("div")
-    cardDiv.innerText = this.suit
-    cardDiv.classList.add("card", this.color)
+		const cardDiv = document.createElement("div")
+		cardDiv.innerText = this.suit
+		cardDiv.classList.add("card", this.color)
 		if (clickable) {
 			cardDiv.style = "cursor: pointer;";
 			cardDiv.addEventListener('click', click_handler);
 		}
-    cardDiv.dataset.value = `${this.rank}`
-    return cardDiv
-  }
+		cardDiv.dataset.value = `${this.rank}`
+		return cardDiv
+  	}
 }
 
 export function enemyCardsHTML(n_of_cards) {
