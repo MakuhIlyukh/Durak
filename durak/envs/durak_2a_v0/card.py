@@ -45,7 +45,7 @@ class SUIT(Enum):
         return SUITS_MAPPING[self.value]
 
 
-SUITS_MAPPING = ['♠', '♡', '♣', '♢']
+SUITS_MAPPING = ['♠', '♥', '♣', '♦']
 """ Нужен для реализация __str__ в классе SUIT """
 
 
@@ -58,11 +58,11 @@ class Card:
         return f"{self.rank}{self.suit}"
 
 
-FULL_DECK = [
+FULL_DECK = tuple(
     Card(rank, suit)
     for suit in SUIT
     for rank in RANK
-]
+)
 
 
 FULL_DECK_SIZE = len(FULL_DECK)

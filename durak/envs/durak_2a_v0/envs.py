@@ -398,7 +398,7 @@ class Durak_2a_v0(Env):
 
     def _new_deck(self) -> List[Card]:
         """ Создает случайную колоду """
-        res = FULL_DECK.copy()
+        res = list(FULL_DECK)
         self.np_random.shuffle(res)
         return res
 
