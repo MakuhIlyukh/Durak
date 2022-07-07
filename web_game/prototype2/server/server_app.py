@@ -2,7 +2,7 @@
 
 import logging
 
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
 from flask_socketio import (
     SocketIO, emit, join_room, leave_room, rooms)
 
@@ -14,7 +14,7 @@ from durak.envs.durak_2a_v0.card import RANK, RANKS_MAPPING, SUIT, Card
 from durak.envs.durak_2a_v0.states import TURN_TYPE
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='', static_folder='../client/build')
 # TODO: remember to set the key
 app.config['SECRET_KEY'] = 'THIS IS VERY SECRET KEY!'
 # ???: Что за cors_allowed_origins?
@@ -58,6 +58,11 @@ def gen_info_message(env, i):
         return "Победа"
     else:
         return "Unkown situation"
+
+
+@app.route("/", defaults={'path':''})
+def serve(path):
+    return send_from_directory(app.static_folder,'index.html')
 
 
 @sio.event
