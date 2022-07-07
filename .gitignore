@@ -5,3 +5,4 @@ env/
 data/
 .mypy_cache
 node_modules/
+ngrok.exe

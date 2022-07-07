@@ -15,7 +15,8 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     // connecting...
     sockRef.current = io(
-      'http://localhost:5000',
+      // 'http://localhost:5000',
+      'https://513b-195-70-217-62.ngrok.io',
     );
 
     // cleanup
