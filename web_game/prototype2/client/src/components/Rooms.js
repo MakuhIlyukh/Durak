@@ -17,7 +17,7 @@ export default function Rooms ( {compId, setCompId} ) {
 				}
 			})
 	}
-
+	
 	function onJoinRoomClick() {
 		const inputRoomId = inpRef.current.value;
 		sockRef.current.emit(
@@ -27,6 +27,8 @@ export default function Rooms ( {compId, setCompId} ) {
 				if (response['status'] === 'ok') {
 					gameInfo.current = {room_id: inputRoomId}
 					setCompId(1);
+				} else if (response['status'] === 'bad') {
+					alert(response['message'])
 				}
 		})
 	}

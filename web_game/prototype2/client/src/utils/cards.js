@@ -1,5 +1,5 @@
-const SUITS = ["♠", "♣", "♥", "♦"];
-const RANKS = ["6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+const SUITS = ['♠', '♥', '♣', '♦'];
+const RANKS = ['6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
 
 function freshDeck() {
 	return SUITS.flatMap(suit => {
@@ -28,4 +28,12 @@ export class Card {
 	get color() {
 		return this.suit === "♣" || this.suit === "♠" ? "black" : "red";
 	};
+}
+
+export function objectsArrayToCards(objs) {
+	return objs.map(o => new Card(o['rank'], o['suit']));
+}
+
+export function objectToCard(o) {
+	return new Card(o['rank'], o['suit'])
 }

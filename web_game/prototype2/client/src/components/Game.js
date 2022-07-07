@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useGameInfo } from "../contexts/GameInfoProvider"
 import { useSocket } from "../contexts/SocketProvider"
 import CardComp from "./CardComp"
@@ -6,7 +6,7 @@ import EnemyCards from "./EnemyCards"
 import EnemyTable from "./EnemyTable"
 import PlayerCards from "./PlayerCards"
 import PlayerTable from "./PlayerTable"
-import { Card } from "../utils/cards"
+import { Card, objectsArrayToCards, objectToCard } from "../utils/cards"
 
 
 export default function Game ( {compId, setCompId} ) {
@@ -17,41 +17,75 @@ export default function Game ( {compId, setCompId} ) {
 	const [playerCards, setPlayerCards] = useState([
 		new Card('10', '♠'),
 		new Card('J', '♣'),
-		new Card('6', '♥')
+		new Card('6', '♥'),
+		new Card('', 'F')
 	])
 	const [playerTable, setPlayerTable] = useState([
 		new Card('10', '♠'),
 		new Card('J', '♣'),
-		new Card('6', '♥')
+		new Card('6', '♥'),
 	])
 	const [enemyTable, setEnemyTable] = useState([
 		new Card('10', '♠'),
 		new Card('J', '♣'),
-		new Card('6', '♥')
+		new Card('6', '♥'),
 	])
 	const [enemyCards, setEnemyCards] = useState(5)
 	const [trumpCard, setTrumpCard] = useState(new Card('', 'X'))
 	const [deckSize, setDeckSize] = useState(36)
-	const [infoMes, setInfoMes] = useState("Загрузка игры")
+	const [infoMes, setInfoMes] = useState("Загрузка игры...")
 
-	const [tempState, setTempState] = useState(0)
+	const flagRef = useRef(false)
 
 	useEffect(() => {
+		sockRef.current.on(
+			"game state",
+			({ 
+				playerCardsResp,
+				playerTableResp,
+				enemyTableResp,
+				enemyCardsResp,
+				trumpCardResp,
+				deckSizeResp,
+				infoMesResp,
+			}) => {
+				setPlayerCards([...objectsArrayToCards(playerCardsResp), new Card('', 'F')])
+				setPlayerTable(objectsArrayToCards(playerTableResp))
+				setEnemyTable(objectsArrayToCards(enemyTableResp))
+				setEnemyCards(enemyCardsResp)
+				setTrumpCard(objectToCard(trumpCardResp))
+				setDeckSize(deckSizeResp)
+				setInfoMes(infoMesResp)
+			}
+		)
 
 		sockRef.current.emit(
-			'ready to play'
+			'ready to play',
+			{room_id: gameInfo.current['room_id']}
 		)
+
+		return () => {
+			sockRef.current.off(
+				"game state"
+			);
+		}
 	}, []) 
 
-	useEffect(() => {
-		console.log(tempState)
-
-	}, [tempState])
+	const click_handler = (rank, suit) => {
+		sockRef.current.emit(
+			'step',
+			{
+				room_id: gameInfo.current['room_id'],
+				rank: (suit === 'F'? null : rank),
+				suit: (suit === 'F'? null : suit),
+				action: (suit === 'F'? 'FINISH' : 'PUT')
+			},
+		)
+	}
 
 	return (
 		<>
-			<>{ tempState }</>
-			<button onClick={ () => {setTempState(prev => prev + 1)} }>hello wolrd</button>
+			<div>Комната: {gameInfo.current['room_id']}</div>
 			<div className="info-container">
 				<div className="info-text">{infoMes}</div>
 				<div className="text trump-text">Козырь: </div>
@@ -80,7 +114,7 @@ export default function Game ( {compId, setCompId} ) {
 			<div className="text">Карты Игрока 2:</div>
 
 			{/* Карты игрока на руке */}
-			<PlayerCards player_cards={playerCards} />
+			<PlayerCards player_cards={playerCards} click_handler={click_handler}/>
 		</>
 	)
 }

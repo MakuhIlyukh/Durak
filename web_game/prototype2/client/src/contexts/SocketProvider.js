@@ -11,6 +11,7 @@ export function SocketProvider({ children }) {
   // socket
   const sockRef = useRef() 
 
+  // if strict mode enabled, then useEffect executes twice
   useEffect(() => {
     // connecting...
     sockRef.current = io(
