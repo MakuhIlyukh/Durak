@@ -5,6 +5,7 @@ import logging
 from flask import Flask, render_template, request, send_from_directory
 from flask_socketio import (
     SocketIO, emit, join_room, leave_room, rooms)
+from transitions import MachineError
 
 from utils import Registry, Room
 from utils import FullRoomExc, RoomNotFoundExc
@@ -287,30 +288,41 @@ def step(data):
 
     if action is ACTION_TYPE.FINISH:
         card = None  
-    if room.env.trigger(action.name, card):
-        for i, u in enumerate(room.users):    
-            sio.emit(
-                'game state',
-                {
-                    "playerCardsResp": [{"rank": card.rank.__str__(),
-                                         "suit": card.suit.__str__()}
-                                        for card in room.env._cards[i]],
-                    "playerTableResp": [{"rank": card.rank.__str__(),
-                                         "suit": card.suit.__str__()}
-                                        for card in room.env._table[i]],
-                    "enemyTableResp": [{"rank": card.rank.__str__(),
-                                         "suit": card.suit.__str__()}
-                                        for card in room.env._table[1 - i]],
-                    "enemyCardsResp": len(room.env._cards[1 - i]),
-                    "trumpCardResp": {
-                        "rank": room.env._trump_card.rank.__str__(),
-                        "suit": room.env._trump_card.suit.__str__()
+    try:
+        if room.env.trigger(action.name, card):
+            for i, u in enumerate(room.users):    
+                sio.emit(
+                    'game state',
+                    {
+                        "playerCardsResp": [{"rank": card.rank.__str__(),
+                                            "suit": card.suit.__str__()}
+                                            for card in room.env._cards[i]],
+                        "playerTableResp": [{"rank": card.rank.__str__(),
+                                            "suit": card.suit.__str__()}
+                                            for card in room.env._table[i]],
+                        "enemyTableResp": [{"rank": card.rank.__str__(),
+                                            "suit": card.suit.__str__()}
+                                            for card in room.env._table[1 - i]],
+                        "enemyCardsResp": len(room.env._cards[1 - i]),
+                        "trumpCardResp": {
+                            "rank": room.env._trump_card.rank.__str__(),
+                            "suit": room.env._trump_card.suit.__str__()
+                        },
+                        "deckSizeResp": len(room.env._deck),
+                        "infoMesResp": gen_info_message(room.env, i),
                     },
-                    "deckSizeResp": len(room.env._deck),
-                    "infoMesResp": gen_info_message(room.env, i),
-                },
-                to=u.sid,
-            )
+                    to=u.sid,
+                )
+        else:
+            return {
+                "status": "bad",
+                "message": "bad action or card"
+            }
+    except MachineError:
+        return {
+            "status": "bad",
+            "message": "bad action or card"
+        }
 
 
 if __name__ == '__main__':
