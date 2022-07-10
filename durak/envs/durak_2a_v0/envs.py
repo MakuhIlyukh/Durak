@@ -386,7 +386,7 @@ class Durak_2a_v0(Env):
             return self._other_player
 
     def _defending_player(self):
-        """ Возвращает атакующего игрока.
+        """ Возвращает защищающегося игрока.
         Не работает для состояний win, loss, draw, invalid. """
         if self.state in (TURN_TYPE.DEFENSE,):
             return self._player

@@ -15,8 +15,9 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     // connecting...
     sockRef.current = io(
-      // 'http://localhost:5000',
-      'https://ilia-durak.herokuapp.com/',
+      'http://localhost:5000',
+      // 'https://ilia-durak.herokuapp.com/',
+      // 'https://fd2f-92-42-30-161.ngrok.io',
     );
 
     // cleanup

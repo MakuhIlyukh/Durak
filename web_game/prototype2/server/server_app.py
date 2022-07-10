@@ -26,6 +26,7 @@ sio = SocketIO(app, cors_allowed_origins="*", async_handlers=False)
 werkzeug_log = logging.getLogger('werkzeug')
 werkzeug_log.setLevel(logging.ERROR)
 
+# FIXME: globals are NOT THREAD(and PROCESS)-SAFE
 registry = Registry()
 
 
@@ -59,6 +60,37 @@ def gen_info_message(env, i):
         return "Победа"
     else:
         return "Unkown situation"
+
+
+def send_state(room, sids="all"):
+    if isinstance(sids, str) and sids == "all":
+        sids = [u.sid for u in room.users]
+    for i, u in enumerate(room.users):
+        if u.sid in sids:    
+            sio.emit(
+                'game state',
+                {
+                    "playerCardsResp": [{"rank": card.rank.__str__(),
+                                        "suit": card.suit.__str__()}
+                                        for card in room.env._cards[i]],
+                    "playerTableResp": [{"rank": card.rank.__str__(),
+                                        "suit": card.suit.__str__()}
+                                        for card in room.env._table[i]],
+                    "enemyTableResp": [{"rank": card.rank.__str__(),
+                                        "suit": card.suit.__str__()}
+                                        for card in room.env._table[1 - i]],
+                    "enemyCardsResp": len(room.env._cards[1 - i]),
+                    "trumpCardResp": {
+                        "rank": room.env._trump_card.rank.__str__(),
+                        "suit": room.env._trump_card.suit.__str__()
+                    },
+                    "deckSizeResp": len(room.env._deck),
+                    # "infoMesResp": gen_info_message(room.env, i),
+                    "gameStateResp": room.env.state.name,
+                    "turnResp": int(room.env._player == i)
+                },
+                to=u.sid,
+            )
 
 
 @app.route("/", defaults={'path':''})
@@ -159,30 +191,8 @@ def ready_to_play(data):
     elif not room.game_started:
         room.game_started = True
         env = Durak_2a_v0()
-        room.set_env(env)
-        for i, u in enumerate(room.users):    
-            sio.emit(
-                'game state',
-                {
-                    "playerCardsResp": [{"rank": card.rank.__str__(),
-                                         "suit": card.suit.__str__()}
-                                        for card in room.env._cards[i]],
-                    "playerTableResp": [{"rank": card.rank.__str__(),
-                                         "suit": card.suit.__str__()}
-                                        for card in room.env._table[i]],
-                    "enemyTableResp": [{"rank": card.rank.__str__(),
-                                         "suit": card.suit.__str__()}
-                                        for card in room.env._table[1 - i]],
-                    "enemyCardsResp": len(room.env._cards[1 - i]),
-                    "trumpCardResp": {
-                        "rank": room.env._trump_card.rank.__str__(),
-                        "suit": room.env._trump_card.suit.__str__()
-                    },
-                    "deckSizeResp": len(room.env._deck),
-                    "infoMesResp": gen_info_message(room.env, i),
-                },
-                to=u.sid,
-            )
+        room.set_env(env)  
+        send_state(room, "all")
     else:
         return {
             "status": "ok"
@@ -248,7 +258,12 @@ def step(data):
             "message": "unknown card suit"
         }
     
-    card = Card(rank=rank, suit=suit)
+    if (action is ACTION_TYPE.FINISH
+            or rank is None
+            or suit is None):
+        card = None  
+    else:
+        card = Card(rank=rank, suit=suit)
 
     # room_id parsing and checking
     try:
@@ -281,44 +296,23 @@ def step(data):
         }
 
     if room.users[room.env._player].sid != sid:
+        send_state(room, [sid,])
         return {
             "status": "bad",
             "message": "not your turn"
         }
 
-    if action is ACTION_TYPE.FINISH:
-        card = None  
     try:
         if room.env.trigger(action.name, card):
-            for i, u in enumerate(room.users):    
-                sio.emit(
-                    'game state',
-                    {
-                        "playerCardsResp": [{"rank": card.rank.__str__(),
-                                            "suit": card.suit.__str__()}
-                                            for card in room.env._cards[i]],
-                        "playerTableResp": [{"rank": card.rank.__str__(),
-                                            "suit": card.suit.__str__()}
-                                            for card in room.env._table[i]],
-                        "enemyTableResp": [{"rank": card.rank.__str__(),
-                                            "suit": card.suit.__str__()}
-                                            for card in room.env._table[1 - i]],
-                        "enemyCardsResp": len(room.env._cards[1 - i]),
-                        "trumpCardResp": {
-                            "rank": room.env._trump_card.rank.__str__(),
-                            "suit": room.env._trump_card.suit.__str__()
-                        },
-                        "deckSizeResp": len(room.env._deck),
-                        "infoMesResp": gen_info_message(room.env, i),
-                    },
-                    to=u.sid,
-                )
+            send_state(room, "all")
         else:
+            send_state(room, [sid,])
             return {
                 "status": "bad",
                 "message": "bad action or card"
             }
     except MachineError:
+        send_state(room, [sid,])
         return {
             "status": "bad",
             "message": "bad action or card"
