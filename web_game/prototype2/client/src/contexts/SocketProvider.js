@@ -1,6 +1,11 @@
 import React, { useContext, useEffect, useRef} from 'react'
 import io from 'socket.io-client'
 
+
+const URI = 'http://localhost:5000'
+// const URI = 'https://ilia-durak.herokuapp.com/'
+// const URI = 'https://fd2f-92-42-30-161.ngrok.io'
+
 const SocketContext = React.createContext()
 
 export function useSocket() {
@@ -15,9 +20,7 @@ export function SocketProvider({ children }) {
   useEffect(() => {
     // connecting...
     sockRef.current = io(
-      'http://localhost:5000',
-      // 'https://ilia-durak.herokuapp.com/',
-      // 'https://fd2f-92-42-30-161.ngrok.io',
+      URI
     );
 
     // cleanup
