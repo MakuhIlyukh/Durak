@@ -1,6 +1,12 @@
-""" ? """
+""" Сервер для живой оценки работы алгоритма и сбора train-данных. 
 
+NOTE: The server works only for 1 THREAD and 1 PROCESS
+"""
+
+
+import pickle
 import logging
+from copy import deepcopy
 
 from flask import Flask, render_template, request, send_from_directory
 from flask_socketio import (
@@ -13,6 +19,10 @@ from durak.envs.durak_2a_v0.envs import Durak_2a_v0
 from durak.envs.durak_2a_v0.action import ACTION_TYPE
 from durak.envs.durak_2a_v0.card import RANK, RANKS_MAPPING, SUIT, Card
 from durak.envs.durak_2a_v0.states import TURN_TYPE
+
+
+PKL_FILE = 'data/history.pkl'
+""" Куда сохраняется история """
 
 
 app = Flask(__name__, static_url_path='', static_folder='../client/build')
@@ -191,7 +201,10 @@ def ready_to_play(data):
     elif not room.game_started:
         room.game_started = True
         env = Durak_2a_v0()
-        room.set_env(env)  
+        room.set_env(env)
+        room.reset()  
+        room.add_to_game_history(action=None,
+                                 state=room.env.get_total_game_state())
         send_state(room, "all")
     else:
         return {
@@ -305,6 +318,8 @@ def step(data):
     try:
         if room.env.trigger(action.name, card):
             send_state(room, "all")
+            room.add_to_game_history(action=action,
+                                     state=room.env.get_total_game_state())
         else:
             send_state(room, [sid,])
             return {
@@ -317,6 +332,14 @@ def step(data):
             "status": "bad",
             "message": "bad action or card"
         }
+
+
+@app.get('/save_history')
+def save_history():
+    with open(PKL_FILE, 'ab') as f:
+        pickle.dump({room_name: room.history
+                     for room_name, room in registry.rooms.items()}, f)
+    return "saved"
 
 
 if __name__ == '__main__':

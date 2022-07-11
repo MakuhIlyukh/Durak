@@ -70,17 +70,17 @@ class Registry:
             raise UserInfoNotFound()
     
 
-
 class Room:
     def __init__(self, name=None, max_size=2):
         if name is None:
             name = Room.gen_name()
         self.name = name
-        self.users = list()
+        self.users = []
         self.max_size = max_size
         self.host = None
         self.env = None
         self.game_started = False
+        self.history = []
     
     @staticmethod
     def gen_name():
@@ -142,10 +142,19 @@ class Room:
         """ Среда для игры в дурака """
         self.env = env
     
-    def reset_env(self):
-        """ Сбросить среду """
+    def reset(self):
+        """ Сбросить среду, добавить новую запись истории """
         self.env.reset()
+        self.history.append([])
     
+    def add_to_game_history(self, action, state):
+        """ Добавить в историю игры новый шаг """
+        if not self.history:
+            self.history.append([])
+        hist = self.history[-1]
+        hist.append({'action': action,
+                     'state': state})
+
     def set_ready(self, sid):
         self.user_by_sid(sid).is_ready = True
     

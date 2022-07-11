@@ -9,6 +9,7 @@
 
 # %% imports
 from typing import Optional, List
+from copy import deepcopy
 
 import numpy as np
 from gym.core import Env
@@ -232,6 +233,25 @@ class Durak_2a_v0(Env):
             if self.may_PUT(card):
                 mark_card_on_mask(res, card)
         return res
+
+    def get_total_game_state(self):
+        """ Возвращает полное состояние среды в дикт-формате.
+        
+        Удобно, чтобы pickl'ить.
+        """
+        return {
+            "player": self._player,
+            "other_player": self._other_player,
+            "state": self.state,
+            "first_beat": self._first_beat,  
+            "deck": deepcopy(self._deck),
+            "cards": deepcopy(self._cards),
+            "beat": deepcopy(self._beat),
+            "table": deepcopy(self._table),
+            "trump_card": self._trump_card,
+            "rewards": deepcopy(self.rewards),
+            "done": self.done
+        }
 
     # ===========================================
     # enter callbacks
