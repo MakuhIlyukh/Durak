@@ -219,7 +219,7 @@ class Durak_2a_v0(Env):
             self.to_INVALID()
         raise NotImplementedError("Допиши :)")
 
-    def _one_hot_valid_actions(self):
+    def _valid_actions_mask(self):
         """ Возвращает маску валидных действий """
         res = create_empty_mask()
         # Если выполнить действие FINISH
