@@ -1,6 +1,7 @@
 """ Сервер для живой оценки работы алгоритма и сбора train-данных. 
 
 NOTE: The server works only for 1 THREAD and 1 PROCESS
+      Not tested for prod.
 """
 
 
