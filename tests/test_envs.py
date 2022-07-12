@@ -488,6 +488,13 @@ def test_mark_card_on_mask():
     assert (mask == expected).all()
 
 
+def test_observation_shape():
+    env = Durak_2a_v0()
+    env.reset()
+    obs = env._get_observation()
+    assert Durak_2a_v0.observation_shape == obs.shape
+
+
 @pytest.mark.skip(reason="Test is not implemented")
 def test_durak_2a_v0():
     SEED = 145
