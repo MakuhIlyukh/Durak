@@ -10,6 +10,10 @@ from durak.envs.durak_2a_v0.card import Card, RANK, FULL_DECK_SIZE, SUIT
 from durak.envs.durak_2a_v0.action import ACTION_TYPE
 
 
+ACTIONS_WITH_CARDS_NUM = FULL_DECK_SIZE + 1
+""" Число всех возможных действий  """
+
+
 # ===============================================
 # one-hot-encodings
 # ===============================================
@@ -46,7 +50,7 @@ def one_hot_card_list(cards: List[Card]):
 
 
 def one_hot_action_and_card(action: ACTION_TYPE, card: Optional[Card]):
-    oh = np.zeros(1 + FULL_DECK_SIZE)
+    oh = np.zeros(ACTIONS_WITH_CARDS_NUM)
     oh[0] = action.value
     if card is not None:
         # Первый бит уделяется под действие, поэтому мы смещаем на 1
@@ -102,15 +106,14 @@ def card_list_from_one_hot(oh: np.array):
 # -----------------------------------------------
 # Masks
 # -----------------------------------------------
-# TODO: onehot -> mask in docstr
 def create_empty_mask():
     """ Создает пустую маску для действий и карт """
-    return np.zeros(1 + FULL_DECK_SIZE)  # ???: MAGIC CONSTANT
+    return np.zeros(ACTIONS_WITH_CARDS_NUM)
 
 
 def mark_FINISH_on_mask(mask: np.array):
     """ Помечает FINISH на маске """
-    mask[0] = 1  # ???: MAGIC CONSTANT
+    mask[0] = 1
 
 
 def mark_card_on_mask(mask: np.array,
@@ -119,3 +122,52 @@ def mark_card_on_mask(mask: np.array,
     if card is not None:
         # Первый бит уделяется под действие, поэтому мы смещаем на 1
         mask[card_ind(card) + 1] = 1  # + 1 IS IMPORTANT!
+
+
+#------------------------------------------------
+# for rlcard functions
+#------------------------------------------------
+def action_card_id(action: ACTION_TYPE, card: Optional[Card]):
+    """ Возвращает id для пары (действие, карта)
+    
+    :param card: не может быть равен None, если action is PUT
+    """
+    if action is ACTION_TYPE.FINISH:
+        return 0
+    else:
+        return 1 + card_ind(card)
+
+
+def action_card_str(action: ACTION_TYPE, card: Optional[Card]):
+    """ Возвращает строковое представление для пары (действие, карта).
+    
+    :param card: не может быть равен None, если action is PUT
+    """
+    if action is ACTION_TYPE.FINISH:
+        return "f"
+    else:
+        return "p-" + card.__repr__()
+
+
+def action_card_str_from_id(act_car_id: int):
+    """ Возвращает строковое представление для пары (действие, карта) из id """
+    if act_car_id == 0:
+        return "f"
+    else:
+        return "p-" + card_from_ind(act_car_id - 1).__repr__()
+
+
+def action_card_pair_from_str(act_car: str):
+    """ Возвращает пару из строкового представления (действие, карты). """
+    if act_car == "f":
+        return (ACTION_TYPE.FINISH, None)
+    else:
+        return (ACTION_TYPE.PUT, Card.from_repr(act_car[2:]))
+
+
+def action_card_id_from_str(act_car: str):
+    """ Возвращает id строкового представления пары (действие, карты). """
+    if act_car == "f":
+        return 0
+    else:
+        return 1 + card_ind(Card.from_repr(act_car[2:]))

@@ -12,17 +12,20 @@ from typing import Optional, List
 from copy import deepcopy
 
 import numpy as np
-from gym.core import Env
-from transitions import Machine
+from gym.core import Env as GymEnv
+from gym.error import ResetNeeded
+from rlcard.envs import Env as RLCardEnv
 
 from durak.envs.transitions_extension import MayMachine
 from durak.envs.durak_2a_v0.action import ACTION_TYPE
 from durak.envs.durak_2a_v0.states import TURN_TYPE
 from durak.envs.durak_2a_v0.card import (
-    Card, FULL_DECK, less)
+    FULL_DECK_SIZE, Card, FULL_DECK, less)
 from durak.envs.durak_2a_v0.utils import (
-    card_ind, create_empty_mask, mark_FINISH_on_mask,
-    mark_card_on_mask, one_hot_enum, one_hot_card, one_hot_card_list)
+    ACTIONS_WITH_CARDS_NUM, action_card_id, action_card_pair_from_str, action_card_str,
+    action_card_str_from_id, card_ind, create_empty_mask,
+    mark_FINISH_on_mask, mark_card_on_mask, one_hot_enum, one_hot_card,
+    one_hot_card_list)
 
 
 MIN_PLAYER_CARDS = 6
@@ -45,7 +48,7 @@ INVALID_REWARD = -5
 # ANSWER: step не возвращает награды и наблюдения, поэтому не особо.
 # ???: А влияет ли это на работоспособность среды и системы?
 # TODO: Проверить работоспособность MayMachine
-class Durak_2a_v0(Env):
+class Durak_2a_v0(GymEnv):
     _transitions = [
         # end of game (PUT ACTION)
         {
@@ -143,8 +146,15 @@ class Durak_2a_v0(Env):
         },
     ]
 
-    _num_of_players = 2
+    num_players = 2
     """ Число игроков """
+    num_actions = ACTIONS_WITH_CARDS_NUM
+    """ Число действий """
+    observation_shape = (226,)
+    """ Размерность пространства наблюдений """
+    # TODO: В будующем добавь поле observation_space:
+    # TODO: Какой тип observation space
+    # observation_space = Obser
 
     def __init__(self, seed: Optional[int] = None):
         self._machine = MayMachine(
@@ -182,8 +192,8 @@ class Durak_2a_v0(Env):
         self.done = False
         """ Флаг окончания игры """
 
-    def _get_observation(self):
-        """ Получить наблюдения для ходящего игрока """
+    def get_numpy_observation(self):
+        """ Получить наблюдения для ходящего игрока (numpy.ndarray) """
         # TODO: Стоит определиться с dtype
         obs = []
         # setting state
@@ -207,20 +217,53 @@ class Durak_2a_v0(Env):
         ))
         # setting first beat
         obs.append(np.array([int(self._first_beat)]))  # TODO: dtype?
+        # setting beat
+        obs.append(one_hot_card_list(self._beat))
 
         return np.concatenate(obs)
-
-    def _step(self,
-              action_type: ACTION_TYPE,
-              card: Optional[Card]):
-        """ Выполняет действие """
-        # do action (or not if it's invalid)
+    
+    def get_observation(self):
+        """ Получить наблюдения для ходящего игрока в dict-формате. """
+        return {
+            "state": self.state,
+            "trump_card": self._trump_card,
+            "cards": deepcopy(self._cards[self._player]),
+            "enemy_len": len(self._cards[self._other_player]),
+            "table": deepcopy(self._table[self._player]),
+            "enemy_table": deepcopy(self._table[self._other_player]),
+            "last_card": (self._table[self._other_player][-1]
+                          if bool(self._table[self._other_player])
+                          else None),
+            "first_beat": self._first_beat,
+            "beat": deepcopy(self._beat)
+        }
+    
+    def do_step(self,
+                action_type: ACTION_TYPE,
+                card: Optional[None]):
+        """ Делает шаг """
+        if self.done:
+            raise ResetNeeded("Нужно вызвать reset!")
         if not self.trigger(action_type.name, card):
             self.to_INVALID()
-        raise NotImplementedError("Допиши :)")
 
-    def _valid_actions_mask(self):
-        """ Возвращает маску валидных действий """
+    def legal_actions(self):
+        """ Возвращает СПИСОК валидных действий и карт """
+        res = []
+        # Если выполнить действие FINISH
+        if self.may_FINISH(None):
+            res.append((ACTION_TYPE.FINISH, None))
+        # Если можно выполнить действие PUT
+        # NOTE: проверяется ТОЛЬКО для карт на РУКЕ
+        #       поэтому может быть источником багов,
+        #       если возможны действия с картами НЕ на руке
+        for card in self._cards[self._player]:
+            if self.may_PUT(card):
+                res.append((ACTION_TYPE.PUT, card))
+        return res
+
+    def legal_actions_mask(self):
+        """ Возвращает МАСКУ валидных действий и карт """
         res = create_empty_mask()
         # Если выполнить действие FINISH
         if self.may_FINISH(None):
@@ -234,7 +277,7 @@ class Durak_2a_v0(Env):
                 mark_card_on_mask(res, card)
         return res
 
-    def get_total_game_state(self):
+    def get_perfect_state(self):
         """ Возвращает полное состояние среды в дикт-формате.
         
         Удобно, чтобы pickl'ить.
@@ -287,7 +330,7 @@ class Durak_2a_v0(Env):
             # if card is None then card not in self._cards[...]
             card in self._cards[self._player]
             and
-            bool(self._cards[self._other_player])  # TODO: maybe redudant
+            bool(self._cards[self._other_player])
         )
 
     def _put_or_finish_start_attack_to_draw_cond(self, card: Optional[Card]):
@@ -303,13 +346,13 @@ class Durak_2a_v0(Env):
         return (
             not bool(self._cards[self._player])
             and
-            bool(self._cards[self._other_player])  # TODO: maybe redudant
+            bool(self._cards[self._other_player])
         )
 
     def _put_or_finish_start_attack_to_loss_cond(self, card: Optional[Card]):
         """ Проигрыш текущего игрока, если: """
         return (
-            bool(self._cards[self._player])  # TODO: maybe redudant
+            bool(self._cards[self._player])
             and
             not bool(self._cards[self._other_player])
         )
@@ -414,6 +457,7 @@ class Durak_2a_v0(Env):
             return self._other_player
 
     def _clear_table(self):
+        """ Очищает стол """
         self._table = [[], []]
 
     def _new_deck(self) -> List[Card]:
@@ -437,5 +481,151 @@ class Durak_2a_v0(Env):
         """ Назначает награды """
         self.rewards[self._player] = player_reward
         self.rewards[self._other_player] = other_player_reward
+
+
+class Durak_2a_v0_game:
+    """ Класс обертка над Durak_2a_v0.
+    
+    Нужен, чтобы интегрировать в rlcard.
+    """
+    def __init__(self):
+        # Не самое элегантное решение использовать
+        #  одновременно GymEnv and RLCardEnv.
+        self.denv = Durak_2a_v0()
+        # Пока не реализована возможность вернуться на предыдущий шаг
+        self.allow_step_back = False
+        self.num_players = self.denv.num_players
+        self.num_actions = self.denv.num_actions
+    
+    def configure(self, game_config: dict):
+        """ Эта штука для чего-то существует """
+        pass
+    
+    def init_game(self):
+        """ Resets the game """
+        self.denv.reset()
+        player = self.denv._player
+        state = self.get_state(player)
+        return state, player
+
+    def step(self, action: str):
+        """ Шаг.
+        
+        Возвращает наблюдения для игрока(который будет ходить далее)
+        и индекс ходящего игрока. 
+        """
+        self.denv.do_step(*action_card_pair_from_str(action))
+        return self.get_state(self.denv._player), self.denv._player
+
+    def step_back(self):
+        """ Возвращение на предыдущее состояние игры. """
+        # Можно заменить на return False
+        raise NotImplementedError("Пока не нуждается в реализации")
+
+    def get_state(self, player_id: int):
+        """ Возвращает состояние для данного игрока """
+        if player_id != self.denv._player:
+            raise ValueError("Невозможно получить состояние для неходящего игрока!")
+        state = self.denv.get_observation()
+        state['numpy_obs'] = self.denv.get_numpy_observation()
+        state['num_players'] = self.get_num_players()
+        state['current_player'] = self.denv._player
+        state['legal_actions'] = self.denv.legal_actions()
+        return state
+    
+    def get_perfect_state(self):
+        """ Возвращает полное состояние среды """
+        state = self.denv.get_perfect_state()
+        state['num_players'] = self.denv.num_players
+        state['legal_actions'] = self.denv.get_legal_actions()
+
+
+    def get_payoffs(self):
+        """ Возвращает награды """
+        return deepcopy(self.denv.rewards)
+    
+    def get_legal_actions(self):
+        """ Возвращает разрешенные действия в строковом
+        представлении.
+        """
+        return [action_card_str(*pair)
+                for pair in self.denv.legal_actions()]
+
+    def get_num_players(self):
+        """ Возвращает число игроков """
+        return self.num_players
+    
+    def get_num_actions(self):
+        """ Возвращает число всех возможных действий """
+        return self.num_actions
+
+    def get_player_id(self):
+        """ Возвращает номер ходящего игрока """
+        return self.denv._player
+
+    def is_over(self):
+        """ Завершен ли эпизод? """
+        return self.denv.done
+    
+    def get_state_shape(self):
+        """ Возвращает размерность пространства наблюдений для одного
+        игрока.
+        """
+        return self.denv.observation_shape
+    
+    def denv_seed(self, seed):
+        """ Устанавливает seed для Durak_2a_v0 """
+        self.denv.seed(seed)
+    
+    def get_legal_actions_ids(self):
+        """  Возвращает список из id допустимых действий. """
+        return [action_card_id(*pair)
+                for pair in self.denv.legal_actions()]
+
+
+class Durak_2a_v0_rlcard(RLCardEnv):
+    """ Класс обертка над Durak_2a_v0_game
+    
+    Нужен, чтобы использовать алгоритмы из rlcard.
+    """
+    def __init__(self, config):
+        self.name = "Durak_2a_v0"
+        self.game = Durak_2a_v0_game()
+        super().__init__(config)
+        self.state_shape = [self.game.get_state_shape()
+                            for _ in range(self.num_players)]
+        self.action_shape = [None for _ in range(self.num_players)]
+
+    def get_payoffs(self):
+        """ Возвращает награды """
+        # ???: почему np.array, а не list
+        return np.array(self.game.get_payoffs())
+
+    def get_perfect_information(self):
+        raise NotImplementedError("Не хочу реализовывать. Вроде и не требуется.")
+
+    def seed(self, seed: Optional[int] = None):
+        """ Resets random number generators """
+        super().seed(seed)
+        self.game.denv_seed(seed)
+
+    def _extract_state(self, state):
+        obs = state['numpy_obs']
+        legal_action_id = self._get_legal_actions()
+        extracted_state = {'obs': obs, 'legal_actions': legal_action_id}
+        extracted_state['raw_obs'] = state
+        extracted_state['raw_legal_actions'] = deepcopy(state['legal_actions'])
+        extracted_state['action_recorder'] = self.action_recorder
+        return extracted_state
+
+    def _decode_action(self, action_id):
+        """ Возвращает строковое предствление действия из id """
+        return action_card_str_from_id(action_id)
+
+    def _get_legal_actions(self):
+        """ Возвращает список из id допустимых действий. """
+        return {act_id: None
+                for act_id in self.game.get_legal_actions_ids()}
+
 
 # %%

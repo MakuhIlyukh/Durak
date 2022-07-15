@@ -205,7 +205,7 @@ def ready_to_play(data):
         room.set_env(env)
         room.reset()  
         room.add_to_game_history(action=None,
-                                 state=room.env.get_total_game_state())
+                                 state=room.env.get_perfect_state())
         send_state(room, "all")
     else:
         return {
@@ -320,7 +320,7 @@ def step(data):
         if room.env.trigger(action.name, card):
             send_state(room, "all")
             room.add_to_game_history(action=action,
-                                     state=room.env.get_total_game_state())
+                                     state=room.env.get_perfect_state())
         else:
             send_state(room, [sid,])
             return {

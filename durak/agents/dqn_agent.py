@@ -36,6 +36,7 @@ from copy import deepcopy
 
 from rlcard.utils.utils import remove_illegal
 
+
 Transition = namedtuple('Transition', ['state', 'action', 'reward', 'next_state', 'legal_actions', 'done'])
 
 
@@ -414,6 +415,7 @@ class Memory(object):
             action_batch (list): a batch of actions
             reward_batch (list): a batch of rewards
             next_state_batch (list): a batch of states
+            legal_actions_batch (list): a batch of legal actions
             done_batch (list): a batch of dones
         '''
         samples = random.sample(self.memory, self.batch_size)

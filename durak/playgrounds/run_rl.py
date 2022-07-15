@@ -1,4 +1,6 @@
 ''' An example of training a reinforcement learning agent on the environments in RLCard
+
+TODO: добавь описание
 '''
 
 
