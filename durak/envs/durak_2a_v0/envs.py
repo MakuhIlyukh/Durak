@@ -250,7 +250,7 @@ class Durak_2a_v0(GymEnv):
                 state = TURN_TYPE.DRAW
             elif self.state is TURN_TYPE.INVALID:
                 state = TURN_TYPE.DRAW
-        return {'state': state}
+        return {'state': state, 'numpy_obs': None}
     
     def do_step(self,
                 action_type: ACTION_TYPE,
