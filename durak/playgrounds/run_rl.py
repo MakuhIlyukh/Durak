@@ -34,6 +34,7 @@ def train(args):
     env = Durak_2a_v0_rlcard(
         config={
             'seed': args.seed,
+            'allow_step_back': False,
         }
     )
 
