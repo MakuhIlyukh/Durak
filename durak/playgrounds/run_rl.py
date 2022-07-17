@@ -8,7 +8,6 @@ import os
 import argparse
 
 import torch
-
 import rlcard
 from rlcard.agents import RandomAgent
 from rlcard.utils import (
@@ -20,6 +19,8 @@ from rlcard.utils import (
     plot_curve,
 )
 
+from durak.envs.durak_2a_v0.envs import Durak_2a_v0_rlcard
+
 
 def train(args):
 
@@ -30,8 +31,7 @@ def train(args):
     set_seed(args.seed)
 
     # Make the environment with seed
-    env = rlcard.make(
-        args.env,
+    env = Durak_2a_v0_rlcard(
         config={
             'seed': args.seed,
         }
@@ -103,22 +103,6 @@ def train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("DQN/NFSP example in RLCard")
-    parser.add_argument(
-        '--env',
-        type=str,
-        default='leduc-holdem',
-        choices=[
-            'blackjack',
-            'leduc-holdem',
-            'limit-holdem',
-            'doudizhu',
-            'mahjong',
-            'no-limit-holdem',
-            'uno',
-            'gin-rummy',
-            'bridge',
-        ],
-    )
     parser.add_argument(
         '--algorithm',
         type=str,
