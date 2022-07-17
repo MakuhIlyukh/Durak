@@ -239,7 +239,7 @@ class Durak_2a_v0(GymEnv):
         }
     
     def get_terminal_observation(self, player):
-        if player == self.player:
+        if player == self._player:
             state = self.state
         else:
             if self.state is TURN_TYPE.WIN:
