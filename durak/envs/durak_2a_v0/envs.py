@@ -238,6 +238,20 @@ class Durak_2a_v0(GymEnv):
             "beat": deepcopy(self._beat)
         }
     
+    def get_terminal_observation(self, player):
+        if player == self.player:
+            state = self.state
+        else:
+            if self.state is TURN_TYPE.WIN:
+                state = TURN_TYPE.LOSS
+            elif self.state is TURN_TYPE.LOSS:
+                state = TURN_TYPE.WIN
+            elif self.state is TURN_TYPE.DRAW:
+                state = TURN_TYPE.DRAW
+            elif self.state is TURN_TYPE.INVALID:
+                state = TURN_TYPE.DRAW
+        return {'state': state}
+    
     def do_step(self,
                 action_type: ACTION_TYPE,
                 card: Optional[None]):
@@ -525,6 +539,8 @@ class Durak_2a_v0_game:
     def get_state(self, player_id: int):
         """ Возвращает состояние для данного игрока """
         if player_id != self.denv._player:
+            if self.denv.done:
+                return self.denv.get_terminal_observation(player_id)
             raise ValueError("Невозможно получить состояние для неходящего игрока!")
         state = self.denv.get_observation()
         state['numpy_obs'] = self.denv.get_numpy_observation()
