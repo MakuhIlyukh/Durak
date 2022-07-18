@@ -191,6 +191,8 @@ class Durak_2a_v0(GymEnv):
         """ Награды, полученные в конце игры """
         self.done = False
         """ Флаг окончания игры """
+        if __debug__:
+            print("Reset called!")
 
     def get_numpy_observation(self, player: int = None):
         """ Получить наблюдения для указанного игрока (numpy.ndarray)
