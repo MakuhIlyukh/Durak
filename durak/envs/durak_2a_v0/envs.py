@@ -166,6 +166,9 @@ class Durak_2a_v0(GymEnv):
         self.reset(seed)
 
     def reset(self, seed: Optional[int] = None):
+        if __debug__:
+            # delete this if block!
+            print(self.get_perfect_state())
         super().reset(seed=seed)
         self._player = FIRST_PLAYER_INDEX
         """ Ходящий игрок(поле будет меняться от хода к ходу) """
@@ -191,8 +194,6 @@ class Durak_2a_v0(GymEnv):
         """ Награды, полученные в конце игры """
         self.done = False
         """ Флаг окончания игры """
-        if __debug__:
-            print("Reset called!")
 
     def get_numpy_observation(self, player: int = None):
         """ Получить наблюдения для указанного игрока (numpy.ndarray)
