@@ -166,9 +166,6 @@ class Durak_2a_v0(GymEnv):
         self.reset(seed)
 
     def reset(self, seed: Optional[int] = None):
-        if __debug__:
-            # delete this if block!
-            print(self.get_perfect_state())
         super().reset(seed=seed)
         self._player = FIRST_PLAYER_INDEX
         """ Ходящий игрок(поле будет меняться от хода к ходу) """
@@ -342,18 +339,30 @@ class Durak_2a_v0(GymEnv):
     def on_enter_WIN(self, card: Optional[Card]):
         self._set_rewards(WIN_REWARD, LOSS_REWARD)
         self.done = True
+        if __debug__:
+            # delete this if block!
+            print(self.get_perfect_state())
 
     def on_enter_LOSS(self, card: Optional[Card]):
         self._set_rewards(LOSS_REWARD, WIN_REWARD)
         self.done = True
+        if __debug__:
+            # delete this if block!
+            print(self.get_perfect_state())
 
     def on_enter_DRAW(self, card: Optional[Card]):
         self._set_rewards(DRAW_REWARD, DRAW_REWARD)
         self.done = True
+        if __debug__:
+            # delete this if block!
+            print(self.get_perfect_state())
 
     def on_enter_INVALID(self, card: Optional[Card]):
         self._set_rewards(INVALID_REWARD, DRAW_REWARD)
         self.done = True
+        if __debug__:
+            # delete this if block!
+            print(self.get_perfect_state())
 
     # ===========================================
     # transition conditions
