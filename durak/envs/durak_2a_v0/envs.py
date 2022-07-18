@@ -150,7 +150,7 @@ class Durak_2a_v0(GymEnv):
     """ Число игроков """
     num_actions = ACTIONS_WITH_CARDS_NUM
     """ Число действий """
-    observation_shape = (226,)
+    observation_shape = (227,)
     """ Размерность пространства наблюдений """
     # TODO: В будующем добавь поле observation_space:
     # TODO: Какой тип observation space
@@ -192,27 +192,33 @@ class Durak_2a_v0(GymEnv):
         self.done = False
         """ Флаг окончания игры """
 
-    def get_numpy_observation(self):
-        """ Получить наблюдения для ходящего игрока (numpy.ndarray) """
+    def get_numpy_observation(self, player: int = None):
+        """ Получить наблюдения для указанного игрока (numpy.ndarray)
+        
+        :param player: индекс игрока
+        """
+        if player is None:
+            player = self._player
+        enemy = self.enemy(player)
         # TODO: Стоит определиться с dtype
         obs = []
         # setting state
-        obs.append(one_hot_enum(self.state))
+        obs.append(one_hot_enum(self.get_personal_turn_type(player)))
         # setting trump card
         obs.append(one_hot_card(self._trump_card))
         # setting player's hand
-        obs.append(one_hot_card_list(self._cards[self._player]))
+        obs.append(one_hot_card_list(self._cards[player]))
         # setting other player's hand SIZE
-        obs.append(np.array([len(self._cards[self._other_player])]))
+        obs.append(np.array([len(self._cards[enemy])]))
         # setting player's table
-        obs.append(one_hot_card_list(self._table[self._player]))
+        obs.append(one_hot_card_list(self._table[player]))
         # setting other player's table
-        obs.append(one_hot_card_list(self._table[self._other_player]))
+        obs.append(one_hot_card_list(self._table[enemy]))
         # setting last other player's table-card
         # if other player's table is empty then assigned array of zeros
         obs.append(one_hot_card(
-            self._table[self._other_player][-1]
-            if bool(self._table[self._other_player])
+            self._table[enemy][-1]
+            if bool(self._table[enemy])
             else None
         ))
         # setting first beat
@@ -222,35 +228,46 @@ class Durak_2a_v0(GymEnv):
 
         return np.concatenate(obs)
     
-    def get_observation(self):
-        """ Получить наблюдения для ходящего игрока в dict-формате. """
+    def get_observation(self, player: int = None):
+        """ Получить наблюдения для указанного игрока в dict-формате.
+        
+        :param player: индекс игрока
+        """
+        if player is None:
+            player = self._player
+        enemy = self.enemy(player)
         return {
-            "state": self.state,
+            "state": self.get_personal_turn_type(player),
             "trump_card": self._trump_card,
-            "cards": deepcopy(self._cards[self._player]),
-            "enemy_len": len(self._cards[self._other_player]),
-            "table": deepcopy(self._table[self._player]),
-            "enemy_table": deepcopy(self._table[self._other_player]),
-            "last_card": (self._table[self._other_player][-1]
-                          if bool(self._table[self._other_player])
+            "cards": deepcopy(self._cards[player]),
+            "enemy_len": len(self._cards[enemy]),
+            "table": deepcopy(self._table[player]),
+            "enemy_table": deepcopy(self._table[enemy]),
+            "last_card": (self._table[enemy][-1]
+                          if bool(self._table[enemy])
                           else None),
             "first_beat": self._first_beat,
             "beat": deepcopy(self._beat)
         }
     
-    def get_terminal_observation(self, player):
+    def enemy(self, player: int):
+        """ Возвращает врага индекс соперника, для указанного игрока. """
+        return 1 - player
+    
+    def get_personal_turn_type(self, player):
         if player == self._player:
-            state = self.state
+            return self.state
+        # Для неходящего игрока:
+        elif self.state is TURN_TYPE.WIN:
+            return TURN_TYPE.LOSS
+        elif self.state is TURN_TYPE.LOSS:
+            return TURN_TYPE.WIN
+        elif self.state is TURN_TYPE.DRAW:
+            return TURN_TYPE.DRAW
+        elif self.state is TURN_TYPE.INVALID:
+            return TURN_TYPE.DRAW
         else:
-            if self.state is TURN_TYPE.WIN:
-                state = TURN_TYPE.LOSS
-            elif self.state is TURN_TYPE.LOSS:
-                state = TURN_TYPE.WIN
-            elif self.state is TURN_TYPE.DRAW:
-                state = TURN_TYPE.DRAW
-            elif self.state is TURN_TYPE.INVALID:
-                state = TURN_TYPE.DRAW
-        return {'state': state, 'numpy_obs': None}
+            return TURN_TYPE.WAITING
     
     def do_step(self,
                 action_type: ACTION_TYPE,
@@ -538,11 +555,7 @@ class Durak_2a_v0_game:
 
     def get_state(self, player_id: int):
         """ Возвращает состояние для данного игрока """
-        if player_id != self.denv._player:
-            if self.denv.done:
-                return self.denv.get_terminal_observation(player_id)
-            raise ValueError("Невозможно получить состояние для неходящего игрока!")
-        state = self.denv.get_observation()
+        state = self.denv.get_observation(player_id)
         state['numpy_obs'] = self.denv.get_numpy_observation()
         state['num_players'] = self.get_num_players()
         state['current_player'] = self.denv._player
