@@ -150,7 +150,7 @@ class Durak_2a_v0(GymEnv):
     """ Число игроков """
     num_actions = ACTIONS_WITH_CARDS_NUM
     """ Число действий """
-    observation_shape = (227,)
+    observation_shape = (263,)
     """ Размерность пространства наблюдений """
     # TODO: В будующем добавь поле observation_space:
     # TODO: Какой тип observation space
