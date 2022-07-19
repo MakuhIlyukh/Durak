@@ -187,6 +187,8 @@ class Durak_2a_v0(GymEnv):
         """ Карты по игрокам на столе """
         self._trump_card = self._deck[0]
         """ Козырная карта """
+        self._known_cards = []
+        """ Карты, которые уже появлялись в игре(в каком-либо раунде на столе) """
         self.rewards = [0, 0]
         """ Награды, полученные в конце игры """
         self.done = False
@@ -225,6 +227,8 @@ class Durak_2a_v0(GymEnv):
         obs.append(np.array([int(self._first_beat)]))  # TODO: dtype?
         # setting beat
         obs.append(one_hot_card_list(self._beat))
+        # setting known cards
+        obs.append(one_hot_card_list(self._known_cards))
 
         return np.concatenate(obs)
     
@@ -247,7 +251,8 @@ class Durak_2a_v0(GymEnv):
                           if bool(self._table[enemy])
                           else None),
             "first_beat": self._first_beat,
-            "beat": deepcopy(self._beat)
+            "beat": deepcopy(self._beat),
+            "known_cards": deepcopy(self._known_cards)
         }
     
     def enemy(self, player: int):
@@ -324,7 +329,8 @@ class Durak_2a_v0(GymEnv):
             "table": deepcopy(self._table),
             "trump_card": self._trump_card,
             "rewards": deepcopy(self.rewards),
-            "done": self.done
+            "done": self.done,
+            "known_cards": deepcopy(self._known_cards)
         }
 
     # ===========================================
@@ -427,6 +433,8 @@ class Durak_2a_v0(GymEnv):
     # transition callbacks
     # ===========================================
     def _put_callback(self, card: Card):
+        if card not in self._known_cards:
+            self._known_cards.append(card)
         self._table[self._player].append(card)
         # HACK: удаляет только первое вхождение
         self._cards[self._player].remove(card)
