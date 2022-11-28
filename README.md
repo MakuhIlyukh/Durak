@@ -17,9 +17,9 @@ RL-environment игры в "Дурака" и агенты.
 - [ ] - Обучить агентов;
     - [ ] - DQN;
         - [x] DQN vs RANDOM AGENT;
-        - [ ] Пофайнтюнить DQN vs RANDOM AGENT;
-        - [ ] DQN vs DQN;
-        - [ ] Пофайнтюнить DQN vs DQN;
-        - [ ] Оценить в игре против человека;
+        - [x] Пофайнтюнить DQN vs RANDOM AGENT;
+        - [x] DQN vs DQN;
+        - [x] Пофайнтюнить DQN vs DQN;
+        - [x] Оценить в игре против человека;
 - [ ] - Интегрировать MLFlow;
 - [x] - Интегрировать среду в rlcard;
